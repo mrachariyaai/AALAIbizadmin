@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,13 +89,7 @@ export function LoginForm() {
       </CardContent>
       <CardFooter className="flex flex-col space-y-4">
         <div className="text-sm text-center text-gray-500">
-          Don't have an account?{" "}
-          <a
-            href="/register"
-            className="text-primary underline hover:text-primary/80"
-          >
-            Register
-          </a>
+          Contact your administrator for account access
         </div>
       </CardFooter>
     </Card>

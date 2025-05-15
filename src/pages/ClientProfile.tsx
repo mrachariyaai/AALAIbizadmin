@@ -1,252 +1,241 @@
 
-import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
 import { PageLayout } from "@/components/common/PageLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { FileText, Building, Package, Check, Ticket, FileContract, Edit, ChevronLeft } from "lucide-react";
-import { mockClients, mockTickets, mockContracts } from "@/data/mockClients";
-import { Client } from "@/types/client";
-import { ClientDialog } from "@/components/clients/ClientDialog";
 import { ClientDetailsPanel } from "@/components/clients/ClientDetailsPanel";
-import { TicketDialog } from "@/components/clients/TicketDialog";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ClientDialog } from "@/components/clients/ClientDialog";
 import { ContractDialog } from "@/components/clients/ContractDialog";
+import { TicketDialog } from "@/components/clients/TicketDialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useParams, Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  File,
+  MessageSquare,
+  Clock,
+  CheckCircle,
+  Users,
+} from "lucide-react";
+import { Client } from "@/types/client";
 
 export default function ClientProfile() {
-  const { id } = useParams<{ id: string }>();
-  const [client, setClient] = useState<Client | undefined>();
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
+  const { id } = useParams();
+  const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false);
-  const navigate = useNavigate();
+  const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
 
-  useEffect(() => {
-    // In a real app, we'd fetch this from an API
-    const foundClient = mockClients.find(c => c.id === id);
-    if (!foundClient) {
-      navigate("/clients");
-    }
-    setClient(foundClient);
-  }, [id, navigate]);
-
-  const handleUpdateClient = (updatedClient: Omit<Client, "id">) => {
-    if (client) {
-      setClient({ ...updatedClient, id: client.id });
-    }
-    setIsEditDialogOpen(false);
+  // Mock client data - updated to match Client interface
+  const client: Client = {
+    id: id || "1",
+    name: "Acme Corporation",
+    email: "contact@acmecorp.com",
+    phone: "(555) 123-4567",
+    companyName: "Acme Corporation",  // Added to match interface
+    industry: "Technology",
+    address: "123 Business Ave, Commerce City, CA 90210",
+    website: "www.acmecorp.com",
+    subscriptionTier: "Enterprise", // Changed from planTier to match interface
+    onboardingStatus: "Completed", // Updated to match allowed values
+    activeSince: "2023-01-15", // Added to match interface
+    notes: "Key enterprise client with multiple service contracts",
+    // Additional properties from the mock client that we'll handle in the component
+    contracts: [
+      { id: "c1", name: "Services Agreement", status: "Active", startDate: "2023-01-15", endDate: "2024-01-14" },
+      { id: "c2", name: "Support Agreement", status: "Active", startDate: "2023-01-15", endDate: "2024-01-14" }
+    ],
+    tickets: [
+      { id: "t1", title: "Login Issues", status: "Open", priority: "High", created: "2023-05-10" },
+      { id: "t2", title: "Feature Request", status: "In Progress", priority: "Medium", created: "2023-06-05" },
+      { id: "t3", title: "Billing Question", status: "Closed", priority: "Low", created: "2023-04-22" }
+    ]
   };
 
-  // Get filtered data for this client
-  const clientTickets = mockTickets.filter(ticket => ticket.clientId === id);
-  const clientContracts = mockContracts.filter(contract => contract.clientId === id);
-
-  if (!client) {
-    return <div>Loading...</div>;
-  }
-
   return (
-    <PageLayout>
+    <PageLayout title="Client Details">
       <div className="mb-6">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink as={Link} to="/dashboard">Dashboard</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink as={Link} to="/clients">Clients</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{client.companyName}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={() => navigate("/clients")}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">{client.companyName}</h1>
-        </div>
-        <Button onClick={() => setIsEditDialogOpen(true)}>
-          <Edit className="mr-2 h-4 w-4" /> Edit Client
+        <Button variant="outline" size="sm" asChild>
+          <Link to="/clients" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" /> Back to Clients
+          </Link>
         </Button>
       </div>
 
-      <Tabs defaultValue="profile">
-        <TabsList className="mb-4">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="tickets">Support Tickets</TabsTrigger>
+      <ClientDetailsPanel client={client} />
+
+      <Tabs defaultValue="contracts" className="mt-8">
+        <TabsList>
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
+          <TabsTrigger value="tickets">Support Tickets</TabsTrigger>
+          <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+          <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="profile" className="space-y-6">
-          <ClientDetailsPanel client={client} />
+        <TabsContent value="contracts" className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Contract Management</h3>
+            <Button onClick={() => setIsContractDialogOpen(true)}>
+              Add Contract
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {client.contracts && client.contracts.map((contract) => (
+              <Card key={contract.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <File className="h-5 w-5 text-primary" />
+                      {contract.name}
+                    </div>
+                    <Badge>{contract.status}</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Valid: {contract.startDate} to {contract.endDate}
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter>
+                  <Button variant="outline" size="sm">View Details</Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
         
-        <TabsContent value="tickets">
+        <TabsContent value="tickets" className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Support Tickets</h3>
+            <Button onClick={() => setIsTicketDialogOpen(true)}>
+              Create Ticket
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {client.tickets && client.tickets.map((ticket) => (
+              <Card key={ticket.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-primary" />
+                      {ticket.title}
+                    </div>
+                    <Badge variant={ticket.status === "Closed" ? "outline" : "default"}>
+                      {ticket.status}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Priority: {ticket.priority}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground flex items-center">
+                    <Clock className="h-4 w-4 mr-1" /> Created: {ticket.created}
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" size="sm">View Ticket</Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="onboarding" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Support Tickets</CardTitle>
-                <CardDescription>View and manage support tickets for this client</CardDescription>
-              </div>
-              <Button onClick={() => setIsTicketDialogOpen(true)}>Add Ticket</Button>
+            <CardHeader>
+              <CardTitle>Onboarding Progress</CardTitle>
+              <CardDescription>Current status: {client.onboardingStatus}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ticket ID</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Assigned To</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientTickets.map((ticket) => (
-                    <TableRow key={ticket.id}>
-                      <TableCell>{ticket.id}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{ticket.subject}</div>
-                        <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                          {ticket.description}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={ticket.status === 'Open' ? 'destructive' : 
-                                 ticket.status === 'In Progress' ? 'default' :
-                                 ticket.status === 'Resolved' ? 'secondary' : 'outline'}>
-                          {ticket.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={ticket.priority === 'Critical' ? 'destructive' : 
-                                 ticket.priority === 'High' ? 'default' :
-                                 ticket.priority === 'Medium' ? 'secondary' : 'outline'}>
-                          {ticket.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{new Date(ticket.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{ticket.assignedTo || "Unassigned"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {clientTickets.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4">
-                        No tickets found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium">Setup Completed</p>
+                    <p className="text-sm text-muted-foreground">Account setup and initial configuration</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium">Integration Completed</p>
+                    <p className="text-sm text-muted-foreground">Systems integration and data setup</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <div>
+                    <p className="font-medium">Training Completed</p>
+                    <p className="text-sm text-muted-foreground">User training and documentation</p>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="contracts">
+        <TabsContent value="users" className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Client Users</h3>
+            <Button>Add User</Button>
+          </div>
+          
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Contracts</CardTitle>
-                <CardDescription>Manage client contracts and agreements</CardDescription>
-              </div>
-              <Button onClick={() => setIsContractDialogOpen(true)}>Add Contract</Button>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                User Management
+              </CardTitle>
+              <CardDescription>Manage users associated with this client</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Contract Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Value</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientContracts.map((contract) => (
-                    <TableRow key={contract.id}>
-                      <TableCell>
-                        <div className="font-medium">{contract.name}</div>
-                        {contract.notes && (
-                          <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                            {contract.notes}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>{contract.type}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={contract.status === 'Active' ? 'default' : 
-                                contract.status === 'Pending Signature' ? 'secondary' :
-                                contract.status === 'Expired' ? 'outline' : 'destructive'}>
-                          {contract.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{contract.startDate}</TableCell>
-                      <TableCell>{contract.endDate}</TableCell>
-                      <TableCell>${contract.value.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-                  {clientContracts.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4">
-                        No contracts found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-2 border rounded-md">
+                  <div>
+                    <p className="font-medium">John Smith</p>
+                    <p className="text-sm text-muted-foreground">Primary Contact • Admin</p>
+                  </div>
+                  <Button variant="outline" size="sm">View Details</Button>
+                </div>
+                <div className="flex justify-between items-center p-2 border rounded-md">
+                  <div>
+                    <p className="font-medium">Sarah Johnson</p>
+                    <p className="text-sm text-muted-foreground">Technical Lead • Standard User</p>
+                  </div>
+                  <Button variant="outline" size="sm">View Details</Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
       
-      <ClientDialog
+      <ClientDialog 
+        open={isClientDialogOpen} 
+        onOpenChange={setIsClientDialogOpen}
         client={client}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onSave={handleUpdateClient}
+        mode="edit"
+        onSave={() => {}}
       />
-
-      <TicketDialog
-        clientId={client.id}
-        open={isTicketDialogOpen}
-        onOpenChange={setIsTicketDialogOpen}
-      />
-
+      
       <ContractDialog
-        clientId={client.id}
         open={isContractDialogOpen}
         onOpenChange={setIsContractDialogOpen}
+        clientId={client.id}
+      />
+      
+      <TicketDialog
+        open={isTicketDialogOpen}
+        onOpenChange={setIsTicketDialogOpen}
+        clientId={client.id}
       />
     </PageLayout>
   );

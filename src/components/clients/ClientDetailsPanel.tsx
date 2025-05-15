@@ -13,20 +13,27 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Client } from "@/types/client";
+import { Button } from "@/components/ui/button";
 
 interface ClientDetailsPanelProps {
   client: Client;
+  onEdit?: () => void;
 }
 
-export function ClientDetailsPanel({ client }: ClientDetailsPanelProps) {
+export function ClientDetailsPanel({ client, onEdit }: ClientDetailsPanelProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <Card className="col-span-1">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between">
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Basic Information
           </CardTitle>
+          {onEdit && (
+            <Button variant="ghost" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

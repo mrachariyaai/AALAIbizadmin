@@ -1,4 +1,3 @@
-
 import { PageLayout } from "@/components/common/PageLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,8 +7,103 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
+
+interface Business {
+  id: string;
+  name: string;
+  industry?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
+}
+
+const DEFAULT_BUSINESS_DATA = {
+  name: "New Business",
+  industry: "other",
+  address: "",
+  email: "",
+  phone: ""
+};
 
 export default function Settings() {
+  const [businessData, setBusinessData] = useState(DEFAULT_BUSINESS_DATA);
+
+  useEffect(() => {
+    const loadBusinessData = () => {
+      const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
+      const savedBusinesses = localStorage.getItem("aalaiBusinesses");
+      
+      if (!selectedBusinessId || !savedBusinesses) {
+        setBusinessData(DEFAULT_BUSINESS_DATA);
+        return;
+      }
+
+      try {
+        const businesses = JSON.parse(savedBusinesses) as Business[];
+        const currentBusiness = businesses.find((b) => b.id === selectedBusinessId);
+        
+        if (currentBusiness) {
+          setBusinessData({
+            name: currentBusiness.name || DEFAULT_BUSINESS_DATA.name,
+            industry: currentBusiness.industry || DEFAULT_BUSINESS_DATA.industry,
+            address: currentBusiness.address || DEFAULT_BUSINESS_DATA.address,
+            email: currentBusiness.email || DEFAULT_BUSINESS_DATA.email,
+            phone: currentBusiness.phone || DEFAULT_BUSINESS_DATA.phone
+          });
+        } else {
+          setBusinessData(DEFAULT_BUSINESS_DATA);
+        }
+      } catch (error) {
+        console.error("Error loading business data:", error);
+        setBusinessData(DEFAULT_BUSINESS_DATA);
+      }
+    };
+
+    // Load initial data
+    loadBusinessData();
+
+    // Listen for business changes
+    window.addEventListener(BUSINESS_UPDATED_EVENT, loadBusinessData);
+
+    return () => {
+      window.removeEventListener(BUSINESS_UPDATED_EVENT, loadBusinessData);
+    };
+  }, []);
+
+  const handleSaveChanges = () => {
+    const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
+    const savedBusinesses = localStorage.getItem("aalaiBusinesses");
+    
+    if (!selectedBusinessId || !savedBusinesses) {
+      console.error("No business selected or no businesses found");
+      return;
+    }
+
+    try {
+      const businesses = JSON.parse(savedBusinesses) as Business[];
+      const updatedBusinesses = businesses.map((b) => {
+        if (b.id === selectedBusinessId) {
+          return {
+            ...b,
+            name: businessData.name || DEFAULT_BUSINESS_DATA.name,
+            industry: businessData.industry || DEFAULT_BUSINESS_DATA.industry,
+            address: businessData.address || DEFAULT_BUSINESS_DATA.address,
+            email: businessData.email || DEFAULT_BUSINESS_DATA.email,
+            phone: businessData.phone || DEFAULT_BUSINESS_DATA.phone
+          };
+        }
+        return b;
+      });
+      
+      localStorage.setItem("aalaiBusinesses", JSON.stringify(updatedBusinesses));
+      window.dispatchEvent(new Event(BUSINESS_UPDATED_EVENT));
+    } catch (error) {
+      console.error("Error saving business data:", error);
+    }
+  };
+
   return (
     <PageLayout title="Settings">
       <Tabs defaultValue="general" className="w-full">
@@ -30,11 +124,19 @@ export default function Settings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="businessName">Business Name</Label>
-                    <Input id="businessName" value="AALAI Demo Business" />
+                    <Input 
+                      id="businessName" 
+                      value={businessData.name}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, name: e.target.value || DEFAULT_BUSINESS_DATA.name }))}
+                      placeholder={DEFAULT_BUSINESS_DATA.name}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="industry">Industry</Label>
-                    <Select defaultValue="retail">
+                    <Select 
+                      value={businessData.industry} 
+                      onValueChange={(value) => setBusinessData(prev => ({ ...prev, industry: value || DEFAULT_BUSINESS_DATA.industry }))}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select industry" />
                       </SelectTrigger>
@@ -51,20 +153,37 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
-                  <Textarea id="address" value="123 Business St, Suite 101&#10;San Francisco, CA 94103" />
+                  <Textarea 
+                    id="address" 
+                    value={businessData.address}
+                    onChange={(e) => setBusinessData(prev => ({ ...prev, address: e.target.value || DEFAULT_BUSINESS_DATA.address }))}
+                    placeholder="Enter business address"
+                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Business Email</Label>
-                    <Input id="email" type="email" value="contact@aalaibusiness.com" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={businessData.email}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, email: e.target.value || DEFAULT_BUSINESS_DATA.email }))}
+                      placeholder="Enter business email"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Business Phone</Label>
-                    <Input id="phone" type="tel" value="+1 (555) 123-4567" />
+                    <Input 
+                      id="phone" 
+                      type="tel" 
+                      value={businessData.phone}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, phone: e.target.value || DEFAULT_BUSINESS_DATA.phone }))}
+                      placeholder="Enter business phone"
+                    />
                   </div>
                 </div>
                 <div className="pt-4">
-                  <Button>Save Changes</Button>
+                  <Button onClick={handleSaveChanges}>Save Changes</Button>
                 </div>
               </CardContent>
             </Card>
