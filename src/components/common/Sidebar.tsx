@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -19,6 +18,7 @@ import {
   CreditCard,
   Building
 } from "lucide-react";
+import { getUserData } from "@/config"; // Import the function
 
 interface SidebarProps {
   className?: string;
@@ -28,8 +28,7 @@ export function Sidebar({ className }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   
-  const userString = localStorage.getItem("aalaiUser");
-  const user = userString ? JSON.parse(userString) : null;
+  const user = getUserData();
   
   const handleLogout = () => {
     localStorage.removeItem("aalaiUser");
@@ -88,7 +87,7 @@ export function Sidebar({ className }: SidebarProps) {
             {!collapsed && (
               <div>
                 <div className="font-medium">{user.name}</div>
-                <div className="text-xs text-muted-foreground">{user.role}</div>
+                {/* <div className="text-xs text-muted-foreground">{user.email}</div> */}
               </div>
             )}
             <Button 

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +19,9 @@ import Settings from "./pages/Settings";
 import PaymentAndBilling from "./pages/PaymentAndBilling";
 import Clients from "./pages/Clients";
 import ClientProfile from "./pages/ClientProfile";
+import { ServiceConfigurationWizard } from "./components/services/ServiceConfigurationWizard";
+import { ItemLocatorServiceConfigurationWizard } from "./components/services/ItemLocatorServiceConfigurationWizard";
+import { EasyCheckoutServiceConfigurationWizard } from "./components/services/EasyCheckoutServiceConfigurationWizard";
 
 const queryClient = new QueryClient();
 
@@ -34,7 +36,11 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/services" element={<Services />} />
-          <Route path="/services/new" element={<NewService />} />
+          {/* <Route path="/services/new" element={<NewService />} /> */}
+          <Route path="/services/configure" element={<ServiceConfigurationWizard />} />
+          <Route path="/services/itemLocator" element={<ItemLocatorServiceConfigurationWizard />} />
+          <Route path="/services/easyCheckout" element={<EasyCheckoutServiceConfigurationWizard />} />
+
           <Route path="/roles" element={<Roles />} />
           <Route path="/roles/new" element={<NewRole />} />
           <Route path="/stakeholders" element={<Stakeholders />} />

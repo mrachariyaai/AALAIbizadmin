@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BASE_URL } from "@/config";
+import { getUserData } from "@/config";
+import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
 
 interface AddBusinessDialogProps {
   open: boolean;
@@ -12,23 +15,27 @@ interface AddBusinessDialogProps {
   onSubmit: (business: {
     id: string;
     name: string;
-    industry: string;
-    address: string;
-    email: string;
-    phone: string;
+    category: string;
+    description: string;
   }) => void;
 }
 
 export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessDialogProps) {
   const [businessName, setBusinessName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [address, setAddress] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [username, setUsername] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const user = getUserData();
+    if (user) {
+      setUsername(user.user_id);
+    }
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
@@ -37,8 +44,8 @@ export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessD
       return;
     }
     
-    if (!email.trim()) {
-      setError("Business email is required");
+    if (!category.trim()) {
+      setError("Business category is required");
       return;
     }
     
@@ -46,28 +53,45 @@ export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessD
     setError("");
     
     try {
-      // Generate a unique ID
-      const newId = `b_${Date.now()}`;
+      // Make API call
+      const response = await fetch(`${BASE_URL}/business/create_business`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: username, // This should be dynamic based on logged-in user
+          name: businessName.trim(),
+          category: category.trim(),
+          description: description.trim()
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create business');
+      }
+
+      const data = await response.json();
       
-      // Create the new business object
+      // Create the new business object using the response data
       const newBusiness = {
-        id: newId,
+        id: username,
         name: businessName.trim(),
-        industry: industry.trim(),
-        address: address.trim(),
-        email: email.trim(),
-        phone: phone.trim()
+        category: category.trim(),
+        description: description.trim()
       };
       
       // Call the onSubmit handler
       onSubmit(newBusiness);
       
+      // Set this as the selected business
+      localStorage.setItem("aalaiSelectedBusiness", newBusiness.id);
+      
       // Reset form
       setBusinessName("");
-      setIndustry("");
-      setAddress("");
-      setEmail("");
-      setPhone("");
+      setCategory("");
+      setDescription("");
+
     } catch (error) {
       console.error("Error adding business:", error);
       setError("Failed to add business. Please try again.");
@@ -85,6 +109,11 @@ export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessD
         
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">User Name</Label>
+              <div className="col-span-3 text-sm">{username || "-"}</div>
+            </div>
+            
             {error && (
               <div className="text-red-500 text-sm">{error}</div>
             )}
@@ -104,62 +133,33 @@ export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessD
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="industry" className="text-right">
-                Industry
+              <Label htmlFor="category" className="text-right">
+                Category
               </Label>
-              <Select value={industry} onValueChange={setIndustry}>
+              <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select industry" />
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="retail">Retail</SelectItem>
-                  <SelectItem value="healthcare">Healthcare</SelectItem>
-                  <SelectItem value="finance">Finance</SelectItem>
-                  <SelectItem value="technology">Technology</SelectItem>
-                  <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="Bank">Bank</SelectItem>
+                  <SelectItem value="Retail">Retail</SelectItem>
+                  <SelectItem value="Salon">Salon</SelectItem>
+                  <SelectItem value="Religious">Religious</SelectItem>
+                  <SelectItem value="Hospital">Hospital</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="address" className="text-right">
-                Address
+              <Label htmlFor="description" className="text-right">
+                Description
               </Label>
               <Textarea
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 className="col-span-3"
-                placeholder="Enter business address"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Business Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter business email"
-              />
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Business Phone
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter business phone"
+                placeholder="Enter business description"
               />
             </div>
           </div>
