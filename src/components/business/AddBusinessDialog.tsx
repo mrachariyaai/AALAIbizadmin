@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BASE_URL } from "@/config";
-import { getUserData } from "@/config";
+import { getUserData, setSelectedBusinesses } from "@/config";
 import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
 
 interface AddBusinessDialogProps {
@@ -85,7 +85,7 @@ export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessD
       onSubmit(newBusiness);
       
       // Set this as the selected business
-      localStorage.setItem("aalaiSelectedBusiness", newBusiness.id);
+      setSelectedBusinesses(newBusiness.id)
       
       // Reset form
       setBusinessName("");

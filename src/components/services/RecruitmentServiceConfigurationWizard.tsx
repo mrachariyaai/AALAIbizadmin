@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, XCircle, AlertCircle, Edit3, ArrowLeft, Database as DatabaseIcon } from "lucide-react";
-import initSqlJs, { Database } from "sql.js";
 import { PageLayout } from "../common/PageLayout";
 import { getBaseUrlByCategory, TestConnection_URL } from "@/config";
 import { useNavigate } from "react-router-dom";
@@ -15,13 +14,13 @@ interface TableMapping {
   fields: Record<string, string>;
 }
 
-interface ItemLocatorConfig {
+interface RecruitmentConfig {
   DB_CONNECTION: string;
   TABLE_MAPPING: Record<string, TableMapping>;
 }
 
 interface Config {
-  item_locator?: ItemLocatorConfig;
+  recruitment?: RecruitmentConfig;
 }
 
 interface Notification {
@@ -31,18 +30,17 @@ interface Notification {
   type: 'success' | 'error' | 'info';
 }
 
-// Add Preview UI Component
 function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () => void }) {
   const navigate = useNavigate();
   
-  if (!config.item_locator) return null;
+  if (!config.recruitment) return null;
 
   return (
     <Card className="mx-auto">
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-2xl">Item Locator Configuration</CardTitle>
+            <CardTitle className="text-2xl">Recruitment Configuration</CardTitle>
             <CardDescription>Current configuration settings</CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -75,15 +73,15 @@ function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () =
               Database Connection
             </h4>
             <p className="text-sm text-gray-600">
-              {config.item_locator.DB_CONNECTION.startsWith('local_file:') 
+              {config.recruitment.DB_CONNECTION.startsWith('local_file:') 
                 ? 'Local Database File' 
-                : config.item_locator.DB_CONNECTION}
+                : config.recruitment.DB_CONNECTION}
             </p>
           </div>
 
           <div className="space-y-4">
             <h4 className="font-medium">Table Mappings</h4>
-            {Object.entries(config.item_locator.TABLE_MAPPING).map(([tableKey, mapping]: [string, TableMapping]) => (
+            {Object.entries(config.recruitment.TABLE_MAPPING).map(([tableKey, mapping]: [string, TableMapping]) => (
               <div key={tableKey} className="bg-gray-50 p-4 rounded-lg">
                 <h5 className="text-sm font-medium mb-3 capitalize">
                   {tableKey.replace('_table', '')} Table: {mapping.name}
@@ -105,7 +103,7 @@ function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () =
   );
 }
 
-export function ItemLocatorServiceConfigurationWizard() {
+export function RecruitmentServiceConfigurationWizard() {
   const navigate = useNavigate();
   const [connection, setConnection] = useState({
     string: "",
@@ -119,9 +117,15 @@ export function ItemLocatorServiceConfigurationWizard() {
   
   const [database, setDatabase] = useState(null);
   const [tables, setTables] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [selectedTable, setSelectedTable] = useState<Record<string, string>>({ products: "" });
-  const [fieldMappings, setFieldMappings] = useState<Record<string, Record<string, string>>>({ products: {} });
+  const [tableColumns, setTableColumns] = useState<Record<string, string[]>>({
+    jobs: []
+  });
+  const [selectedTable, setSelectedTable] = useState<Record<string, string>>({
+    jobs: ""
+  });
+  const [fieldMappings, setFieldMappings] = useState<Record<string, Record<string, string>>>({
+    jobs: {}
+  });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [config, setConfig] = useState<Config>();
   const [loading, setLoading] = useState(false);
@@ -130,10 +134,10 @@ export function ItemLocatorServiceConfigurationWizard() {
   const [BaseURL, setBaseURL] = useState(getBaseUrlByCategory())
   
   const serviceConfig = {
-    title: "Item Locator",
+    title: "Recruitment",
     tables: {
-      products: {
-        fields: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"]
+      jobs: {
+        fields: ["job_id", "job_title", "job_description"]
       }
     }
   };
@@ -156,13 +160,13 @@ export function ItemLocatorServiceConfigurationWizard() {
       const response = await fetch(`${BaseURL}/get_config`);
       if (response.ok) {
         const data = await response.json();
-        if (data?.item_locator) {
+        if (data?.recruitment) {
           setConfig(data);
-          if (data.item_locator.DB_CONNECTION) {
-            const isLocal = data.item_locator.DB_CONNECTION.startsWith('local_file:');
+          if (data.recruitment.DB_CONNECTION) {
+            const isLocal = data.recruitment.DB_CONNECTION.startsWith('local_file:');
             setConnection(prev => ({
               ...prev,
-              string: isLocal ? '' : data.item_locator.DB_CONNECTION,
+              string: isLocal ? '' : data.recruitment.DB_CONNECTION,
               isLocal,
               connected: false,
               editing: true
@@ -237,7 +241,7 @@ export function ItemLocatorServiceConfigurationWizard() {
     setSelectedTable(prev => ({ ...prev, [tableType]: tableValue }));
     
     if (!tableValue) {
-      setColumns([]);
+      setTableColumns(prev => ({ ...prev, [tableType]: [] }));
       return;
     }
     
@@ -257,15 +261,10 @@ export function ItemLocatorServiceConfigurationWizard() {
         throw new Error(data.message || 'Failed to fetch table columns');
       }
 
-      setColumns(data.columns);
-      showNotification(
-        "Columns loaded",
-        `Successfully loaded ${data.columns.length} columns for table: ${tableValue}`,
-        "success"
-      );
+      setTableColumns(prev => ({ ...prev, [tableType]: data.columns }));
     } catch (error) {
       showNotification("Error", error.message || "Failed to fetch table columns", "error");
-      setColumns([]);
+      setTableColumns(prev => ({ ...prev, [tableType]: [] }));
     }
   };
 
@@ -309,7 +308,7 @@ export function ItemLocatorServiceConfigurationWizard() {
 
     try {
       const newConfig = {
-        item_locator: {
+        recruitment: {
           DB_CONNECTION: connection.isLocal 
             ? `${connection.file?.name || 'uploaded_file'}`
             : connection.string,
@@ -319,7 +318,7 @@ export function ItemLocatorServiceConfigurationWizard() {
 
       Object.keys(selectedTable).forEach(tableType => {
         if (selectedTable[tableType]) {
-          newConfig.item_locator.TABLE_MAPPING[`${tableType}_table`] = {
+          newConfig.recruitment.TABLE_MAPPING[`${tableType}_table`] = {
             name: selectedTable[tableType],
             fields: fieldMappings[tableType]
           };
@@ -361,10 +360,16 @@ export function ItemLocatorServiceConfigurationWizard() {
       file: null,
       saving: false
     });
-    setSelectedTable({ products: "" });
-    setFieldMappings({ products: {} });
+    setSelectedTable({
+      jobs: ""
+    });
+    setFieldMappings({
+      jobs: {}
+    });
     setTables([]);
-    setColumns([]);
+    setTableColumns({
+      jobs: []
+    });
     setDatabase(null);
     setShowConfigUI(true);
   };
@@ -372,11 +377,11 @@ export function ItemLocatorServiceConfigurationWizard() {
   const handleEditMode = async () => {
     setIsEditing(true);
     
-    if (config?.item_locator) {
-      const isLocal = config.item_locator.DB_CONNECTION.startsWith('local_file:');
+    if (config?.recruitment) {
+      const isLocal = config.recruitment.DB_CONNECTION.startsWith('local_file:');
       setConnection(prev => ({
         ...prev,
-        string: isLocal ? '' : config.item_locator.DB_CONNECTION,
+        string: isLocal ? '' : config.recruitment.DB_CONNECTION,
         isLocal,
         connected: false,
         editing: true,
@@ -389,7 +394,7 @@ export function ItemLocatorServiceConfigurationWizard() {
         const newSelectedTable = {};
         const newFieldMappings = {};
 
-        Object.entries(config.item_locator.TABLE_MAPPING).forEach(([key, value]) => {
+        Object.entries(config.recruitment.TABLE_MAPPING).forEach(([key, value]) => {
           const tableType = key.replace('_table', '');
           newSelectedTable[tableType] = value.name;
           newFieldMappings[tableType] = value.fields;
@@ -409,16 +414,16 @@ export function ItemLocatorServiceConfigurationWizard() {
   };
 
   return (
-    <PageLayout title="Item Locator Service Configuration">
+    <PageLayout title="Recruitment Service Configuration">
       <div className="relative mx-auto">
-        {!config?.item_locator && !showConfigUI ? (
+        {!config?.recruitment && !showConfigUI ? (
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl">Item Locator Service</CardTitle>
+                  <CardTitle className="text-2xl">Recruitment Service</CardTitle>
                   <CardDescription>
-                    Connect your database to enable efficient item searching and tracking in your inventory.
+                    Connect your database to enable job posting and recruitment management.
                   </CardDescription>
                 </div>
                 <Button
@@ -437,7 +442,7 @@ export function ItemLocatorServiceConfigurationWizard() {
                 <div className="text-center space-y-2">
                   <h3 className="text-lg font-medium">No Configuration Found</h3>
                   <p className="text-sm text-gray-500">
-                    Configure your Item Locator service to start tracking and searching items in your inventory.
+                    Configure your Recruitment service to start managing job postings.
                   </p>
                 </div>
                 <Button 
@@ -449,7 +454,7 @@ export function ItemLocatorServiceConfigurationWizard() {
               </div>
             </CardContent>
           </Card>
-        ) : config?.item_locator && !isEditing ? (
+        ) : config?.recruitment && !isEditing ? (
           <ConfigurationPreview 
             config={config} 
             onEdit={handleEditMode} 
@@ -459,8 +464,8 @@ export function ItemLocatorServiceConfigurationWizard() {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl">Item Locator Configuration</CardTitle>
-                  <CardDescription>Configure your Item Locator service by connecting to your database</CardDescription>
+                  <CardTitle className="text-2xl">Recruitment Configuration</CardTitle>
+                  <CardDescription>Configure your Recruitment service by connecting to your database</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -472,7 +477,7 @@ export function ItemLocatorServiceConfigurationWizard() {
                     <ArrowLeft className="h-4 w-4" />
                     <span>Back to Services</span>
                   </Button>
-                  {config?.item_locator && (
+                  {config?.recruitment && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -588,7 +593,7 @@ export function ItemLocatorServiceConfigurationWizard() {
                                       <SelectValue placeholder="Select field" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {columns.map((column) => (
+                                      {tableColumns[tableType].map((column) => (
                                         <SelectItem key={column} value={column}>{column}</SelectItem>
                                       ))}
                                     </SelectContent>

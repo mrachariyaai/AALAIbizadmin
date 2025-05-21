@@ -1,15 +1,110 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, XCircle, AlertCircle, Edit3 } from "lucide-react";
-import initSqlJs, { Database } from "sql.js";
+import { CheckCircle, XCircle, AlertCircle, Edit3, ArrowLeft, Database as DatabaseIcon } from "lucide-react";
 import { PageLayout } from "../common/PageLayout";
-import { BASE_URL_Retail } from "@/config";
+import { getBaseUrlByCategory, TestConnection_URL } from "@/config";
+import { useNavigate } from "react-router-dom";
+
+interface TableMapping {
+  name: string;
+  fields: Record<string, string>;
+}
+
+interface EasyCheckoutConfig {
+  DB_CONNECTION: string;
+  TABLE_MAPPING: Record<string, TableMapping>;
+}
+
+interface Config {
+  easy_checkout?: EasyCheckoutConfig;
+}
+
+interface Notification {
+  id: number;
+  title: string;
+  description: string;
+  type: 'success' | 'error' | 'info';
+}
+
+function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () => void }) {
+  const navigate = useNavigate();
+  
+  if (!config.easy_checkout) return null;
+
+  return (
+    <Card className="mx-auto">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-2xl">Easy Checkout Configuration</CardTitle>
+            <CardDescription>Current configuration settings</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/services')}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Services</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              className="flex items-center space-x-2"
+            >
+              <Edit3 className="h-4 w-4" />
+              <span>Edit Configuration</span>
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <DatabaseIcon className="h-4 w-4" />
+              Database Connection
+            </h4>
+            <p className="text-sm text-gray-600">
+              {config.easy_checkout.DB_CONNECTION.startsWith('local_file:') 
+                ? 'Local Database File' 
+                : config.easy_checkout.DB_CONNECTION}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium">Table Mappings</h4>
+            {Object.entries(config.easy_checkout.TABLE_MAPPING).map(([tableKey, mapping]: [string, TableMapping]) => (
+              <div key={tableKey} className="bg-gray-50 p-4 rounded-lg">
+                <h5 className="text-sm font-medium mb-3 capitalize">
+                  {tableKey.replace('_table', '')} Table: {mapping.name}
+                </h5>
+                <div className="grid grid-cols-2 gap-4">
+                  {Object.entries(mapping.fields).map(([field, column]: [string, string]) => (
+                    <div key={field} className="flex items-center gap-2">
+                      <span className="text-sm font-medium min-w-[120px]">{field.replace('_', ' ')}:</span>
+                      <span className="text-sm text-gray-600">{column}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function EasyCheckoutServiceConfigurationWizard() {
+  const navigate = useNavigate();
   const [connection, setConnection] = useState({
     string: "",
     isLocal: false,
@@ -22,20 +117,30 @@ export function EasyCheckoutServiceConfigurationWizard() {
   
   const [database, setDatabase] = useState(null);
   const [tables, setTables] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [selectedTable, setSelectedTable] = useState({
+  const [tableColumns, setTableColumns] = useState<Record<string, string[]>>({
+    products: [],
+    cart_items: [],
+    bills: [],
+    bill_items: []
+  });
+  const [selectedTable, setSelectedTable] = useState<Record<string, string>>({
     products: "",
     cart_items: "",
     bills: "",
     bill_items: ""
   });
-  const [fieldMappings, setFieldMappings] = useState({
+  const [fieldMappings, setFieldMappings] = useState<Record<string, Record<string, string>>>({
     products: {},
     cart_items: {},
     bills: {},
     bill_items: {}
   });
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [config, setConfig] = useState<Config>();
+  const [loading, setLoading] = useState(false);
+  const [showConfigUI, setShowConfigUI] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [BaseURL, setBaseURL] = useState(getBaseUrlByCategory())
   
   const serviceConfig = {
     title: "Easy Checkout",
@@ -54,93 +159,75 @@ export function EasyCheckoutServiceConfigurationWizard() {
       }
     }
   };
-  
-  const showNotification = (title, description, type = "info") => {
+
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const showNotification = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, title, description, type }]);
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 5000);
   };
-  
-  // Load SQLite file and initialize database connection
-  const loadSQLiteFile = async (file) => {
+
+  const loadConfig = async () => {
+    setLoading(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
-      // Initialize SQL.js
-      const SQL = await initSqlJs({
-        locateFile: file => `https://sql.js.org/dist/${file}`
-      });
-      
-      // Create database from file
-      const db = new SQL.Database(uint8Array);
-      
-      // Verify it's a valid SQLite database by querying sqlite_master
-      const stmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table'");
-      const tables = [];
-      while (stmt.step()) {
-        const row = stmt.getAsObject();
-        tables.push(row.name);
+      const response = await fetch(`${BaseURL}/get_config`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.easy_checkout) {
+          setConfig(data);
+          if (data.easy_checkout.DB_CONNECTION) {
+            const isLocal = data.easy_checkout.DB_CONNECTION.startsWith('local_file:');
+            setConnection(prev => ({
+              ...prev,
+              string: isLocal ? '' : data.easy_checkout.DB_CONNECTION,
+              isLocal,
+              connected: false,
+              editing: true
+            }));
+          }
+        }
+      } else {
+        throw new Error('Failed to load configuration');
       }
-      stmt.free();
-      
-      if (tables.length === 0) {
-        throw new Error("No tables found in the SQLite file");
-      }
-      
-      return { db, tables };
     } catch (error) {
-      console.error('Error loading SQLite file:', error);
-      throw new Error(`Invalid SQLite file: ${error.message}`);
+      showNotification("Error", "Failed to load configuration: " + error.message, "error");
+    } finally {
+      setLoading(false);
     }
   };
-  
-  // Test connection for file path or uploaded file
+
   const testConnection = async () => {
     if (!connection.string && !connection.file) {
-      showNotification(
-        "Error",
-        "Please enter a file path or select a local file",
-        "error"
-      );
+      showNotification("Error", "Please enter a file path or select a local file", "error");
       return;
     }
     
     setConnection(prev => ({ ...prev, loading: true }));
-    
-    showNotification(
-      "Testing connection...",
-      "Please wait while we test the connection",
-      "info"
-    );
+    showNotification("Testing connection...", "Please wait while we test the connection", "info");
     
     try {
-      let dbResult;
+      const response = await fetch(`${TestConnection_URL}/test_connection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connection_string: connection.string,
+          connection_type: 'sqlite'
+        })
+      });
+
+      const data = await response.json();
       
-      if (connection.isLocal && connection.file) {
-        // Handle uploaded file
-        dbResult = await loadSQLiteFile(connection.file);
-      } else if (!connection.isLocal && connection.string) {
-        // Handle file path - try to read using window.fs.readFile
-        try {
-          // Use window.FS instead of window.fs
-          const fileData = await window.FS.readFile(connection.string);
-          const blob = new Blob([fileData]);
-          const file = new File([blob], connection.string.split('/').pop() || 'database.db');
-          dbResult = await loadSQLiteFile(file);
-        } catch (fsError) {
-          throw new Error(`Cannot read file from path: ${connection.string}. Please ensure the file exists and is accessible.`);
-        }
-      } else {
-        throw new Error("Invalid connection configuration");
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to connect to database');
       }
-      
-      // Store database instance and tables
-      setDatabase(dbResult.db);
-      setTables(dbResult.tables);
-      
+
+      setTables(data.tables);
+      setDatabase({ serverConnection: true, connectionString: connection.string });
       setConnection(prev => ({
         ...prev,
         connected: true,
@@ -149,11 +236,10 @@ export function EasyCheckoutServiceConfigurationWizard() {
       
       showNotification(
         "Connection successful",
-        `Connected to SQLite file with ${dbResult.tables.length} tables`,
+        `Connected to database with ${data.tables.length} tables`,
         "success"
       );
     } catch (error) {
-      console.error('Connection test failed:', error);
       showNotification(
         "Connection failed",
         error.message || "Failed to connect to the database",
@@ -168,72 +254,44 @@ export function EasyCheckoutServiceConfigurationWizard() {
       }));
     }
   };
-  
-  // Get columns for a specific table
-  const getTableColumns = async (tableName) => {
-    try {
-      if (!database) {
-        throw new Error("Database not connected");
-      }
-      
-      // Get table info using PRAGMA table_info
-      const stmt = database.prepare(`PRAGMA table_info(${tableName})`);
-      const columns = [];
-      while (stmt.step()) {
-        const row = stmt.getAsObject();
-        columns.push(row.name);
-      }
-      stmt.free();
-      
-      if (columns.length === 0) {
-        throw new Error(`No columns found in table: ${tableName}`);
-      }
-      
-      return columns;
-    } catch (error) {
-      console.error('Error getting table columns:', error);
-      throw error;
-    }
-  };
-  
-  // Handle table selection and load its columns
-  const handleTableSelection = async (tableType, tableValue) => {
-    setSelectedTable(prev => ({
-      ...prev,
-      [tableType]: tableValue
-    }));
+
+  const handleTableSelection = async (tableType: string, tableValue: string) => {
+    setSelectedTable(prev => ({ ...prev, [tableType]: tableValue }));
     
     if (!tableValue) {
-      setColumns([]);
+      setTableColumns(prev => ({ ...prev, [tableType]: [] }));
       return;
     }
     
     try {
-      showNotification(
-        "Loading columns...",
-        `Fetching columns for table: ${tableValue}`,
-        "info"
-      );
+      const response = await fetch(`${TestConnection_URL}/get_table_columns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connection_string: connection.string,
+          table_name: tableValue
+        })
+      });
+
+      const data = await response.json();
       
-      const tableColumns = await getTableColumns(tableValue);
-      setColumns(tableColumns);
-      
-      showNotification(
-        "Columns loaded",
-        `Successfully loaded ${tableColumns.length} columns for table: ${tableValue}`,
-        "success"
-      );
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to fetch table columns');
+      }
+
+      setTableColumns(prev => ({ ...prev, [tableType]: data.columns }));
+      // showNotification(
+      //   "Columns loaded",
+      //   `Successfully loaded ${data.columns.length} columns for table: ${tableValue}`,
+      //   "success"
+      // );
     } catch (error) {
-      showNotification(
-        "Error",
-        error.message || "Failed to fetch table columns",
-        "error"
-      );
-      setColumns([]);
+      showNotification("Error", error.message || "Failed to fetch table columns", "error");
+      setTableColumns(prev => ({ ...prev, [tableType]: [] }));
     }
   };
-  
-  const handleFieldMapping = (tableType, fieldName, columnName) => {
+
+  const handleFieldMapping = (tableType: string, fieldName: string, columnName: string) => {
     setFieldMappings(prev => ({
       ...prev,
       [tableType]: {
@@ -242,18 +300,10 @@ export function EasyCheckoutServiceConfigurationWizard() {
       }
     }));
   };
-  
-  const updateConnectionState = (field, value) => {
-    setConnection(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-  
-  const handleFileSelection = (event) => {
-    const file = event.target.files[0];
+
+  const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
-      // Validate file extension
       const validExtensions = ['.sqlite', '.db', '.sqlite3'];
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
       
@@ -267,120 +317,41 @@ export function EasyCheckoutServiceConfigurationWizard() {
         return;
       }
       
-      setConnection(prev => ({
-        ...prev,
-        file: file
-      }));
+      setConnection(prev => ({ ...prev, file }));
     }
-  };
-  
-  const submitServiceConfiguration = () => {
-    // Validate that all required fields are mapped
-    const requiredTables = Object.keys(serviceConfig.tables);
-    const configuredTables = Object.keys(selectedTable).filter(
-      tableType => selectedTable[tableType]
-    );
-    
-    if (configuredTables.length === 0) {
-      showNotification(
-        "Error",
-        "Please configure at least one table",
-        "error"
-      );
-      return;
-    }
-    
-    // Check if all required fields for configured tables are mapped
-    let allFieldsMapped = true;
-    configuredTables.forEach(tableType => {
-      const requiredFields = serviceConfig.tables[tableType].fields;
-      const mappedFields = Object.keys(fieldMappings[tableType]).filter(
-        field => fieldMappings[tableType][field]
-      );
-      
-      if (mappedFields.length !== requiredFields.length) {
-        allFieldsMapped = false;
-      }
-    });
-    
-    if (!allFieldsMapped) {
-      showNotification(
-        "Warning",
-        "Some fields are not mapped. Please complete all field mappings.",
-        "error"
-      );
-      return;
-    }
-    
-    // Generate configuration
-    const config = {
-      DB_CONNECTION: connection.isLocal 
-        ? `local_file:${connection.file?.name || 'uploaded_file'}`
-        : connection.string,
-      TABLE_MAPPING: {}
-    };
-    
-    configuredTables.forEach(tableType => {
-      const tableName = selectedTable[tableType];
-      config.TABLE_MAPPING[`${tableType}_table`] = {
-        name: tableName,
-        fields: fieldMappings[tableType]
-      };
-    });
-    
-    console.log("Easy Checkout Configuration:", config);
-    
-    // Set editing to false
-    setConnection(prev => ({
-      ...prev,
-      editing: false
-    }));
-    
-    showNotification(
-      "Configuration saved",
-      "Easy Checkout configuration has been saved successfully",
-      "success"
-    );
   };
 
   const saveConfiguration = async () => {
     if (!connection.connected) {
-      showNotification(
-        "Error",
-        "Please connect to the database first",
-        "error"
-      );
+      showNotification("Error", "Please connect to the database first", "error");
       return;
     }
 
     setConnection(prev => ({ ...prev, saving: true }));
 
     try {
-      const config = {
+      const newConfig = {
         easy_checkout: {
           DB_CONNECTION: connection.isLocal 
-            ? `local_file:${connection.file?.name || 'uploaded_file'}`
+            ? `${connection.file?.name || 'uploaded_file'}`
             : connection.string,
           TABLE_MAPPING: {}
         }
       };
 
-      // Add table mappings
       Object.keys(selectedTable).forEach(tableType => {
         if (selectedTable[tableType]) {
-          config.easy_checkout.TABLE_MAPPING[`${tableType}_table`] = {
+          newConfig.easy_checkout.TABLE_MAPPING[`${tableType}_table`] = {
             name: selectedTable[tableType],
             fields: fieldMappings[tableType]
           };
         }
       });
 
-      const response = await fetch(`${BASE_URL_Retail}/config`, {
+      const response = await fetch(`${BaseURL}/config`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(config)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
       });
 
       if (!response.ok) {
@@ -388,123 +359,241 @@ export function EasyCheckoutServiceConfigurationWizard() {
       }
 
       const data = await response.json();
-      
-      showNotification(
-        "Success",
-        data.message || "Configuration saved successfully",
-        "success"
-      );
-
-      // Set editing to false after successful save
+      showNotification("Success", data.message || "Configuration saved successfully", "success");
+      setConfig(newConfig);
+      setIsEditing(false);
       setConnection(prev => ({
         ...prev,
         editing: false,
         saving: false
       }));
     } catch (error) {
-      console.error('Error saving configuration:', error);
-      showNotification(
-        "Error",
-        error.message || "Failed to save configuration",
-        "error"
-      );
+      showNotification("Error", error.message || "Failed to save configuration", "error");
       setConnection(prev => ({ ...prev, saving: false }));
+    }
+  };
+
+  const handleAddConfiguration = () => {
+    setConnection({
+      string: "",
+      isLocal: false,
+      connected: false,
+      loading: false,
+      editing: true,
+      file: null,
+      saving: false
+    });
+    setSelectedTable({
+      products: "",
+      cart_items: "",
+      bills: "",
+      bill_items: ""
+    });
+    setFieldMappings({
+      products: {},
+      cart_items: {},
+      bills: {},
+      bill_items: {}
+    });
+    setTables([]);
+    setTableColumns({
+      products: [],
+      cart_items: [],
+      bills: [],
+      bill_items: []
+    });
+    setDatabase(null);
+    setShowConfigUI(true);
+  };
+
+  const handleEditMode = async () => {
+    setIsEditing(true);
+    
+    if (config?.easy_checkout) {
+      const isLocal = config.easy_checkout.DB_CONNECTION.startsWith('local_file:');
+      setConnection(prev => ({
+        ...prev,
+        string: isLocal ? '' : config.easy_checkout.DB_CONNECTION,
+        isLocal,
+        connected: false,
+        editing: true,
+        loading: true
+      }));
+
+      try {
+        await testConnection();
+        
+        const newSelectedTable = {};
+        const newFieldMappings = {};
+        const newTableColumns = {};
+
+        Object.entries(config.easy_checkout.TABLE_MAPPING).forEach(([key, value]) => {
+          const tableType = key.replace('_table', '');
+          newSelectedTable[tableType] = value.name;
+          newFieldMappings[tableType] = value.fields;
+        });
+
+        setSelectedTable(newSelectedTable);
+        setFieldMappings(newFieldMappings);
+
+        for (const [tableType, tableName] of Object.entries(newSelectedTable)) {
+          await handleTableSelection(tableType, tableName as string);
+        }
+      } catch (error) {
+        console.error('Error in edit mode:', error);
+        showNotification("Error", "Failed to load existing configuration", "error");
+      }
     }
   };
 
   return (
     <PageLayout title="Easy Checkout Service Configuration">
-      <div className="relative">
-        <Card>
-          <CardHeader>
-            <CardTitle>Easy Checkout Configuration</CardTitle>
-            <CardDescription>Configure your Easy Checkout service by connecting to your SQLite database</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Connection Section */}
-              <div className={!connection.editing ? "opacity-50" : ""}>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="useLocalFile"
-                    checked={connection.isLocal}
-                    onChange={(e) => updateConnectionState('isLocal', e.target.checked)}
-                    disabled={!connection.editing}
-                    aria-label="Use local SQLite file"
-                  />
-                  <Label htmlFor="useLocalFile">Upload local SQLite file</Label>
+      <div className="relative mx-auto">
+        {!config?.easy_checkout && !showConfigUI ? (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-2xl">Easy Checkout Service</CardTitle>
+                  <CardDescription>
+                    Connect your database to enable efficient checkout and billing management.
+                  </CardDescription>
                 </div>
-                
-                {connection.isLocal ? (
-                  <div>
-                    <Label htmlFor="sqliteFile">Select SQLite File</Label>
-                    <Input 
-                      id="sqliteFile"
-                      type="file"
-                      accept=".sqlite,.db,.sqlite3"
-                      disabled={!connection.editing}
-                      onChange={handleFileSelection}
-                      className="mt-1.5"
-                    />
-                    {connection.file && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Selected: {connection.file.name} ({(connection.file.size / 1024 / 1024).toFixed(2)} MB)
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <Label htmlFor="connectionString">SQLite File Path</Label>
-                    <div className="flex space-x-2 mt-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/services')}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to Services</span>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                <div className="text-center space-y-2">
+                  <h3 className="text-lg font-medium">No Configuration Found</h3>
+                  <p className="text-sm text-gray-500">
+                    Configure your Easy Checkout service to start managing checkouts and bills.
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleAddConfiguration}
+                  className="bg-primary text-white"
+                >
+                  + Add Configuration
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : config?.easy_checkout && !isEditing ? (
+          <ConfigurationPreview 
+            config={config} 
+            onEdit={handleEditMode} 
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-2xl">Easy Checkout Configuration</CardTitle>
+                  <CardDescription>Configure your Easy Checkout service by connecting to your database</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/services')}
+                    className="flex items-center gap-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back to Services</span>
+                  </Button>
+                  {config?.easy_checkout && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(false)}
+                      className="flex items-center space-x-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      <span>Cancel Edit</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <DatabaseIcon className="h-4 w-4" />
+                    Database Connection
+                  </h4>
+                  
+                  {connection.isLocal ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="sqliteFile">Select Database File</Label>
+                      <Input 
+                        id="sqliteFile"
+                        type="file"
+                        accept=".sqlite,.db,.sqlite3"
+                        disabled={!connection.editing}
+                        onChange={handleFileSelection}
+                      />
+                      {connection.file && (
+                        <p className="text-sm text-gray-600">
+                          Selected: {connection.file.name} ({(connection.file.size / 1024 / 1024).toFixed(2)} MB)
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="connectionString">Database File Path</Label>
                       <Input 
                         id="connectionString"
-                        placeholder="Enter path to SQLite file (e.g., /path/to/database.db)"
+                        placeholder="Enter path to database file (e.g., C:/Projects/database.db)"
                         value={connection.string}
-                        onChange={(e) => updateConnectionState('string', e.target.value)}
+                        onChange={(e) => setConnection(prev => ({ ...prev, string: e.target.value }))}
                         disabled={!connection.editing}
                       />
                     </div>
-                  </div>
-                )}
+                  )}
+                  
+                  <Button 
+                    onClick={testConnection} 
+                    variant="secondary" 
+                    disabled={connection.loading || !connection.editing || (!connection.file && !connection.string)} 
+                    className="mt-4"
+                  >
+                    {connection.loading ? "Testing..." : "Test Connection"}
+                  </Button>
+                </div>
                 
-                <Button 
-                  onClick={testConnection} 
-                  variant="secondary" 
-                  disabled={connection.loading || !connection.editing || (!connection.file && !connection.string)} 
-                  className="mt-2"
-                >
-                  {connection.loading ? "Testing..." : "Test Connection"}
-                </Button>
-              </div>
-              
-              {/* Connection Status */}
-              <div className="flex items-center space-x-2">
-                {connection.connected ? (
-                  <>
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-600 font-medium">Connected - {tables.length} tables found</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-5 w-5 text-red-600" />
-                    <span className="text-red-600 font-medium">Not Connected</span>
-                  </>
-                )}
-              </div>
-              
-              {/* Configuration Section - Only enabled after connection */}
-              <div className={!connection.connected || !connection.editing ? "opacity-50 pointer-events-none" : ""}>
-                <div className="border rounded-md p-4">
-                  <h4 className="font-medium mb-3">Table Configuration</h4>
-                  <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  {connection.connected ? (
+                    <>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-green-600 font-medium">Connected - {tables.length} tables found</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-5 w-5 text-red-600" />
+                      <span className="text-red-600 font-medium">Not Connected</span>
+                    </>
+                  )}
+                </div>
+                
+                {connection.connected && (
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                    <h4 className="font-medium">Table Configuration</h4>
                     {Object.keys(serviceConfig.tables).map(tableType => (
-                      <div key={tableType} className="space-y-3">
-                        <h5 className="font-medium capitalize text-sm">{tableType.replace('_', ' ')} Table</h5>
+                      <div key={tableType} className="space-y-4">
                         <div>
                           <Label htmlFor={`${tableType}_table`}>Select {tableType.replace('_', ' ')} Table</Label>
                           <Select 
-                            disabled={!connection.connected || !connection.editing}
+                            disabled={!connection.connected}
                             onValueChange={(value) => handleTableSelection(tableType, value)}
                             value={selectedTable[tableType] || ""}
                           >
@@ -520,24 +609,24 @@ export function EasyCheckoutServiceConfigurationWizard() {
                         </div>
                         
                         {selectedTable[tableType] && (
-                          <div>
-                            <Label>Field Mapping for {tableType}</Label>
-                            <div className="grid grid-cols-2 gap-3 mt-1.5">
+                          <div className="space-y-2">
+                            <Label>Field Mapping</Label>
+                            <div className="grid grid-cols-2 gap-4">
                               {serviceConfig.tables[tableType].fields.map((field) => (
-                                <div key={field}>
+                                <div key={field} className="space-y-1">
                                   <Label htmlFor={`${tableType}_${field}`} className="text-xs">
                                     {field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                   </Label>
                                   <Select 
-                                    disabled={!connection.connected || !selectedTable[tableType] || !connection.editing}
+                                    disabled={!connection.connected || !selectedTable[tableType]}
                                     onValueChange={(value) => handleFieldMapping(tableType, field, value)}
                                     value={fieldMappings[tableType][field] || ""}
                                   >
-                                    <SelectTrigger className="mt-1">
+                                    <SelectTrigger>
                                       <SelectValue placeholder="Select field" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {columns.map((column) => (
+                                      {tableColumns[tableType].map((column) => (
                                         <SelectItem key={column} value={column}>{column}</SelectItem>
                                       ))}
                                     </SelectContent>
@@ -550,52 +639,32 @@ export function EasyCheckoutServiceConfigurationWizard() {
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-              
-              {/* Submit and Save Buttons - Bottom Right */}
-              {connection.connected && connection.editing && (
-                <div className="flex justify-end space-x-2">
-                  <Button 
-                    onClick={submitServiceConfiguration}
-                    className="bg-primary text-white"
-                  >
-                    Submit Configuration
-                  </Button>
-                  <Button 
-                    onClick={saveConfiguration}
-                    className="bg-green-600 text-white"
-                    disabled={connection.saving}
-                  >
-                    {connection.saving ? "Saving..." : "Save Configuration"}
-                  </Button>
-                </div>
-              )}
-              
-              {connection.connected && !connection.editing && (
-                <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-600 font-medium">Configuration Saved</span>
+                )}
+                
+                {connection.connected && (
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={saveConfiguration}
+                      className="bg-green-600 text-white hover:bg-green-700"
+                      disabled={connection.saving}
+                    >
+                      {connection.saving ? "Saving..." : "Save Configuration"}
+                    </Button>
                   </div>
-                  <p className="text-sm text-green-700 mt-1">
-                    This service is configured and ready to use. Click the edit button to modify settings.
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
-        {/* Notification System */}
         <div className="fixed top-4 right-4 z-50 space-y-2">
           {notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`flex items-center p-4 rounded-md shadow-md max-w-sm ${
-                notification.type === 'success' ? 'bg-green-100 border border-green-300' :
-                notification.type === 'error' ? 'bg-red-100 border border-red-300' :
-                'bg-blue-100 border border-blue-300'
+              className={`flex items-center p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ${
+                notification.type === 'success' ? 'bg-green-50 border border-green-200' :
+                notification.type === 'error' ? 'bg-red-50 border border-red-200' :
+                'bg-blue-50 border border-blue-200'
               }`}
             >
               {notification.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600 mr-2" />}

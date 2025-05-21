@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { BusinessSwitcher, BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
 import { AddBusinessDialog } from "@/components/business/AddBusinessDialog";
-import { getUserData, getBusinessesData, setBusinessesData } from "@/config";
+import { getUserData, getBusinessesData, setBusinessesData, setSelectedBusinesses } from "@/config";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -31,7 +31,7 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
 
   useEffect(() => {
     const loadBusinessData = () => {
-      const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
+      const selectedBusinessId = getBusinessesData;
       const businesses = getBusinessesData();
       // ... loads business data ...
     };
@@ -63,7 +63,7 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
     setBusinessesData(businesses);
     
     // Set as selected business
-    localStorage.setItem("aalaiSelectedBusiness", newBusiness.id);
+    setSelectedBusinesses(newBusiness.id);
     
     // Dispatch custom event to notify BusinessSwitcher to update
     console.log("Business created successfully, triggering BUSINESS_UPDATED_EVENT...");

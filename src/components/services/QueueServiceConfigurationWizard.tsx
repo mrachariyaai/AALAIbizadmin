@@ -3,25 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, XCircle, AlertCircle, Edit3, ArrowLeft, Database as DatabaseIcon } from "lucide-react";
-import initSqlJs, { Database } from "sql.js";
 import { PageLayout } from "../common/PageLayout";
 import { getBaseUrlByCategory, TestConnection_URL } from "@/config";
 import { useNavigate } from "react-router-dom";
 
-interface TableMapping {
-  name: string;
-  fields: Record<string, string>;
-}
-
-interface ItemLocatorConfig {
+interface QueueConfig {
   DB_CONNECTION: string;
-  TABLE_MAPPING: Record<string, TableMapping>;
 }
 
 interface Config {
-  item_locator?: ItemLocatorConfig;
+  queue_manager?: QueueConfig;
 }
 
 interface Notification {
@@ -31,18 +23,15 @@ interface Notification {
   type: 'success' | 'error' | 'info';
 }
 
-// Add Preview UI Component
 function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () => void }) {
   const navigate = useNavigate();
-  
-  if (!config.item_locator) return null;
-
+  if (!config.queue_manager) return null;
   return (
     <Card className="mx-auto">
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-2xl">Item Locator Configuration</CardTitle>
+            <CardTitle className="text-2xl">Queue Configuration</CardTitle>
             <CardDescription>Current configuration settings</CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -75,29 +64,10 @@ function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () =
               Database Connection
             </h4>
             <p className="text-sm text-gray-600">
-              {config.item_locator.DB_CONNECTION.startsWith('local_file:') 
+              {config.queue_manager.DB_CONNECTION.startsWith('local_file:') 
                 ? 'Local Database File' 
-                : config.item_locator.DB_CONNECTION}
+                : config.queue_manager.DB_CONNECTION}
             </p>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="font-medium">Table Mappings</h4>
-            {Object.entries(config.item_locator.TABLE_MAPPING).map(([tableKey, mapping]: [string, TableMapping]) => (
-              <div key={tableKey} className="bg-gray-50 p-4 rounded-lg">
-                <h5 className="text-sm font-medium mb-3 capitalize">
-                  {tableKey.replace('_table', '')} Table: {mapping.name}
-                </h5>
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(mapping.fields).map(([field, column]: [string, string]) => (
-                    <div key={field} className="flex items-center gap-2">
-                      <span className="text-sm font-medium min-w-[120px]">{field.replace('_', ' ')}:</span>
-                      <span className="text-sm text-gray-600">{column}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </CardContent>
@@ -105,7 +75,7 @@ function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () =
   );
 }
 
-export function ItemLocatorServiceConfigurationWizard() {
+export function QueueServiceConfigurationWizard() {
   const navigate = useNavigate();
   const [connection, setConnection] = useState({
     string: "",
@@ -116,27 +86,12 @@ export function ItemLocatorServiceConfigurationWizard() {
     file: null,
     saving: false
   });
-  
-  const [database, setDatabase] = useState(null);
-  const [tables, setTables] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [selectedTable, setSelectedTable] = useState<Record<string, string>>({ products: "" });
-  const [fieldMappings, setFieldMappings] = useState<Record<string, Record<string, string>>>({ products: {} });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [config, setConfig] = useState<Config>();
   const [loading, setLoading] = useState(false);
   const [showConfigUI, setShowConfigUI] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [BaseURL, setBaseURL] = useState(getBaseUrlByCategory())
-  
-  const serviceConfig = {
-    title: "Item Locator",
-    tables: {
-      products: {
-        fields: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"]
-      }
-    }
-  };
 
   useEffect(() => {
     loadConfig();
@@ -156,13 +111,13 @@ export function ItemLocatorServiceConfigurationWizard() {
       const response = await fetch(`${BaseURL}/get_config`);
       if (response.ok) {
         const data = await response.json();
-        if (data?.item_locator) {
+        if (data?.queue_manager) {
           setConfig(data);
-          if (data.item_locator.DB_CONNECTION) {
-            const isLocal = data.item_locator.DB_CONNECTION.startsWith('local_file:');
+          if (data.queue_manager.DB_CONNECTION) {
+            const isLocal = data.queue_manager.DB_CONNECTION.startsWith('local_file:');
             setConnection(prev => ({
               ...prev,
-              string: isLocal ? '' : data.item_locator.DB_CONNECTION,
+              string: isLocal ? '' : data.queue_manager.DB_CONNECTION,
               isLocal,
               connected: false,
               editing: true
@@ -184,10 +139,8 @@ export function ItemLocatorServiceConfigurationWizard() {
       showNotification("Error", "Please enter a file path or select a local file", "error");
       return;
     }
-    
     setConnection(prev => ({ ...prev, loading: true }));
     showNotification("Testing connection...", "Please wait while we test the connection", "info");
-    
     try {
       const response = await fetch(`${TestConnection_URL}/test_connection`, {
         method: 'POST',
@@ -197,24 +150,18 @@ export function ItemLocatorServiceConfigurationWizard() {
           connection_type: 'sqlite'
         })
       });
-
       const data = await response.json();
-      
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to connect to database');
       }
-
-      setTables(data.tables);
-      setDatabase({ serverConnection: true, connectionString: connection.string });
       setConnection(prev => ({
         ...prev,
         connected: true,
         loading: false
       }));
-      
       showNotification(
         "Connection successful",
-        `Connected to database with ${data.tables.length} tables`,
+        `Connected to database!`,
         "success"
       );
     } catch (error) {
@@ -223,8 +170,6 @@ export function ItemLocatorServiceConfigurationWizard() {
         error.message || "Failed to connect to the database",
         "error"
       );
-      setTables([]);
-      setDatabase(null);
       setConnection(prev => ({
         ...prev,
         connected: false,
@@ -233,58 +178,11 @@ export function ItemLocatorServiceConfigurationWizard() {
     }
   };
 
-  const handleTableSelection = async (tableType: string, tableValue: string) => {
-    setSelectedTable(prev => ({ ...prev, [tableType]: tableValue }));
-    
-    if (!tableValue) {
-      setColumns([]);
-      return;
-    }
-    
-    try {
-      const response = await fetch(`${TestConnection_URL}/get_table_columns`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          connection_string: connection.string,
-          table_name: tableValue
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to fetch table columns');
-      }
-
-      setColumns(data.columns);
-      showNotification(
-        "Columns loaded",
-        `Successfully loaded ${data.columns.length} columns for table: ${tableValue}`,
-        "success"
-      );
-    } catch (error) {
-      showNotification("Error", error.message || "Failed to fetch table columns", "error");
-      setColumns([]);
-    }
-  };
-
-  const handleFieldMapping = (tableType: string, fieldName: string, columnName: string) => {
-    setFieldMappings(prev => ({
-      ...prev,
-      [tableType]: {
-        ...prev[tableType],
-        [fieldName]: columnName
-      }
-    }));
-  };
-
   const handleFileSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const validExtensions = ['.sqlite', '.db', '.sqlite3'];
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-      
       if (!validExtensions.includes(fileExtension)) {
         showNotification(
           "Invalid file type",
@@ -294,7 +192,6 @@ export function ItemLocatorServiceConfigurationWizard() {
         event.target.value = '';
         return;
       }
-      
       setConnection(prev => ({ ...prev, file }));
     }
   };
@@ -304,38 +201,23 @@ export function ItemLocatorServiceConfigurationWizard() {
       showNotification("Error", "Please connect to the database first", "error");
       return;
     }
-
     setConnection(prev => ({ ...prev, saving: true }));
-
     try {
       const newConfig = {
-        item_locator: {
+        queue_manager: {
           DB_CONNECTION: connection.isLocal 
             ? `${connection.file?.name || 'uploaded_file'}`
-            : connection.string,
-          TABLE_MAPPING: {}
+            : connection.string
         }
       };
-
-      Object.keys(selectedTable).forEach(tableType => {
-        if (selectedTable[tableType]) {
-          newConfig.item_locator.TABLE_MAPPING[`${tableType}_table`] = {
-            name: selectedTable[tableType],
-            fields: fieldMappings[tableType]
-          };
-        }
-      });
-
       const response = await fetch(`${BaseURL}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)
       });
-
       if (!response.ok) {
         throw new Error('Failed to save configuration');
       }
-
       const data = await response.json();
       showNotification("Success", data.message || "Configuration saved successfully", "success");
       setConfig(newConfig);
@@ -361,64 +243,35 @@ export function ItemLocatorServiceConfigurationWizard() {
       file: null,
       saving: false
     });
-    setSelectedTable({ products: "" });
-    setFieldMappings({ products: {} });
-    setTables([]);
-    setColumns([]);
-    setDatabase(null);
     setShowConfigUI(true);
   };
 
   const handleEditMode = async () => {
     setIsEditing(true);
-    
-    if (config?.item_locator) {
-      const isLocal = config.item_locator.DB_CONNECTION.startsWith('local_file:');
+    if (config?.queue_manager) {
+      const isLocal = config.queue_manager.DB_CONNECTION.startsWith('local_file:');
       setConnection(prev => ({
         ...prev,
-        string: isLocal ? '' : config.item_locator.DB_CONNECTION,
+        string: isLocal ? '' : config.queue_manager.DB_CONNECTION,
         isLocal,
         connected: false,
         editing: true,
-        loading: true
+        loading: false
       }));
-
-      try {
-        await testConnection();
-        
-        const newSelectedTable = {};
-        const newFieldMappings = {};
-
-        Object.entries(config.item_locator.TABLE_MAPPING).forEach(([key, value]) => {
-          const tableType = key.replace('_table', '');
-          newSelectedTable[tableType] = value.name;
-          newFieldMappings[tableType] = value.fields;
-        });
-
-        setSelectedTable(newSelectedTable);
-        setFieldMappings(newFieldMappings);
-
-        for (const [tableType, tableName] of Object.entries(newSelectedTable)) {
-          await handleTableSelection(tableType, tableName as string);
-        }
-      } catch (error) {
-        console.error('Error in edit mode:', error);
-        showNotification("Error", "Failed to load existing configuration", "error");
-      }
     }
   };
 
   return (
-    <PageLayout title="Item Locator Service Configuration">
+    <PageLayout title="Queue Service Configuration">
       <div className="relative mx-auto">
-        {!config?.item_locator && !showConfigUI ? (
+        {!config?.queue_manager && !showConfigUI ? (
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl">Item Locator Service</CardTitle>
+                  <CardTitle className="text-2xl">Queue Service</CardTitle>
                   <CardDescription>
-                    Connect your database to enable efficient item searching and tracking in your inventory.
+                    Configure your queue management system to efficiently handle customer queues and service scheduling.
                   </CardDescription>
                 </div>
                 <Button
@@ -437,7 +290,7 @@ export function ItemLocatorServiceConfigurationWizard() {
                 <div className="text-center space-y-2">
                   <h3 className="text-lg font-medium">No Configuration Found</h3>
                   <p className="text-sm text-gray-500">
-                    Configure your Item Locator service to start tracking and searching items in your inventory.
+                    Configure your Queue service to start managing customer queues and service scheduling.
                   </p>
                 </div>
                 <Button 
@@ -449,7 +302,7 @@ export function ItemLocatorServiceConfigurationWizard() {
               </div>
             </CardContent>
           </Card>
-        ) : config?.item_locator && !isEditing ? (
+        ) : config?.queue_manager && !isEditing ? (
           <ConfigurationPreview 
             config={config} 
             onEdit={handleEditMode} 
@@ -459,8 +312,8 @@ export function ItemLocatorServiceConfigurationWizard() {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl">Item Locator Configuration</CardTitle>
-                  <CardDescription>Configure your Item Locator service by connecting to your database</CardDescription>
+                  <CardTitle className="text-2xl">Queue Configuration</CardTitle>
+                  <CardDescription>Configure your Queue service by connecting to your database</CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -472,7 +325,7 @@ export function ItemLocatorServiceConfigurationWizard() {
                     <ArrowLeft className="h-4 w-4" />
                     <span>Back to Services</span>
                   </Button>
-                  {config?.item_locator && (
+                  {config?.queue_manager && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -493,7 +346,6 @@ export function ItemLocatorServiceConfigurationWizard() {
                     <DatabaseIcon className="h-4 w-4" />
                     Database Connection
                   </h4>
-                  
                   {connection.isLocal ? (
                     <div className="space-y-2">
                       <Label htmlFor="sqliteFile">Select Database File</Label>
@@ -522,7 +374,6 @@ export function ItemLocatorServiceConfigurationWizard() {
                       />
                     </div>
                   )}
-                  
                   <Button 
                     onClick={testConnection} 
                     variant="secondary" 
@@ -532,12 +383,11 @@ export function ItemLocatorServiceConfigurationWizard() {
                     {connection.loading ? "Testing..." : "Test Connection"}
                   </Button>
                 </div>
-                
                 <div className="flex items-center space-x-2">
                   {connection.connected ? (
                     <>
                       <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="text-green-600 font-medium">Connected - {tables.length} tables found</span>
+                      <span className="text-green-600 font-medium">Connected</span>
                     </>
                   ) : (
                     <>
@@ -546,63 +396,6 @@ export function ItemLocatorServiceConfigurationWizard() {
                     </>
                   )}
                 </div>
-                
-                {connection.connected && (
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                    <h4 className="font-medium">Table Configuration</h4>
-                    {Object.keys(serviceConfig.tables).map(tableType => (
-                      <div key={tableType} className="space-y-4">
-                        <div>
-                          <Label htmlFor={`${tableType}_table`}>Select {tableType.replace('_', ' ')} Table</Label>
-                          <Select 
-                            disabled={!connection.connected}
-                            onValueChange={(value) => handleTableSelection(tableType, value)}
-                            value={selectedTable[tableType] || ""}
-                          >
-                            <SelectTrigger className="mt-1.5">
-                              <SelectValue placeholder={`Select ${tableType} table`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {tables.map((table) => (
-                                <SelectItem key={table} value={table}>{table}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        {selectedTable[tableType] && (
-                          <div className="space-y-2">
-                            <Label>Field Mapping</Label>
-                            <div className="grid grid-cols-2 gap-4">
-                              {serviceConfig.tables[tableType].fields.map((field) => (
-                                <div key={field} className="space-y-1">
-                                  <Label htmlFor={`${tableType}_${field}`} className="text-xs">
-                                    {field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                  </Label>
-                                  <Select 
-                                    disabled={!connection.connected || !selectedTable[tableType]}
-                                    onValueChange={(value) => handleFieldMapping(tableType, field, value)}
-                                    value={fieldMappings[tableType][field] || ""}
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select field" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {columns.map((column) => (
-                                        <SelectItem key={column} value={column}>{column}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
                 {connection.connected && (
                   <div className="flex justify-end">
                     <Button 
@@ -618,7 +411,6 @@ export function ItemLocatorServiceConfigurationWizard() {
             </CardContent>
           </Card>
         )}
-        
         <div className="fixed top-4 right-4 z-50 space-y-2">
           {notifications.map((notification) => (
             <div

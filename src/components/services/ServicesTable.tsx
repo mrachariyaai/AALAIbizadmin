@@ -2,99 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Database, 
-  Edit, 
-  Settings, 
-  Trash2, 
-  Plus, 
-  Search,
-  ArrowLeft,
-  Download,
-  Upload,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  ShoppingCart,
-  MapPin,
-  Briefcase,
-  BarChart3,
-  Users,
-  Package
-} from "lucide-react";
+import { Search, CheckCircle, XCircle, AlertCircle, ShoppingCart, MapPin, Briefcase, Package, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL_Retail } from "@/config";
-
-// Sample configuration data
-const initialConfig = {
-  // "item_locator": {
-  //   "DB_CONNECTION": "shop_products.db",
-  //   "TABLE_MAPPING": {
-  //     "products_table": {
-  //       "name": "products",
-  //       "fields": {
-  //         "item_id": "item_id",
-  //         "item_name": "item_name",
-  //         "categories": "categories",
-  //         "description": "description",
-  //         "price": "price",
-  //         "quantity": "quantity",
-  //         "image_path": "image_path",
-  //         "location": "location"
-  //       }
-  //     }
-  //   }
-  // },
-  // "easy_checkout": {
-  //   "DB_CONNECTION": "fashion_shop.db",
-  //   "TABLE_MAPPING": {
-  //     "products_table": {
-  //       "name": "products",
-  //       "fields": {
-  //         "item_id": "item_id",
-  //         "item_name": "item_name",
-  //         "categories": "categories",
-  //         "description": "description",
-  //         "price": "price",
-  //         "quantity": "quantity",
-  //         "image_path": "image_path",
-  //         "location": "location"
-  //       }
-  //     },
-  //     "cart_items_table": {
-  //       "name": "cart_items",
-  //       "fields": {
-  //         "user_id": "user_id",
-  //         "product_id": "product_id",
-  //         "quantity": "quantity"
-  //       }
-  //     },
-  //     "bills_table": {
-  //       "name": "bills",
-  //       "fields": {
-  //         "bill_number": "bill_number",
-  //         "user_id": "user_id",
-  //         "total_price": "total_price",
-  //         "discounted_total": "discounted_total",
-  //         "bill_date": "bill_date"
-  //       }
-  //     }
-  //   }
-  // },
-  // "resources": {
-  //   "DIRS": {
-  //     "product": "product_images",
-  //     "offer": "offer_banners"
-  //   },
-  //   "UPLOADS_DIR": "uploads",
-  //   "OFFER_IMAGE_DIR": "offer_banners",
-  //   "SHOP_LOGO_PATH": "shop_logos/shop_logo.png"
-  // }
-};
+import { BASE_URL_Retail, getSelectedBusinessData, getBaseUrlByCategory } from "@/config";
+import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
 
 // Add interfaces for service definitions
 export interface ServiceDefinition {
@@ -142,69 +53,86 @@ export const serviceDefinitions: ServiceDefinitions = {
       bill_items_table: ["bill_number", "product_id", "quantity", "total_price", "discounted_price"]
     }
   },
-  // catalog: {
-  //   title: "Catelogue",
-  //   description: "Comprehensive product catalog management system",
-  //   icon: Package,
-  //   category: "Core Service",
-  //   features: ["Product management", "Category organization", "Inventory tracking", "Pricing management"],
-  //   requiredTables: ["products_table"],
-  //   optionalTables: ["cart_items_table", "bills_table", "bill_items_table"],
-  //   fields: {
-  //     products_table: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"],
-  //     cart_items_table: ["user_id", "product_id", "quantity"],
-  //     bills_table: ["bill_number", "user_id", "total_price", "discounted_total", "bill_date"],
-  //     bill_items_table: ["bill_number", "product_id", "quantity", "total_price", "discounted_price"]
-  //   }
-  // },
-  // recruitment: {
-  //   title: "Recruitment System",
-  //   description: "Job posting and candidate management platform",
-  //   icon: Briefcase,
-  //   category: "Core Service",
-  //   features: ["Job posting", "Candidate tracking", "Application management", "Interview scheduling"],
-  //   requiredTables: ["jobs_table"],
-  //   optionalTables: [],
-  //   fields: {
-  //     jobs_table: ["job_id", "job_title", "job_description"]
-  //   }
-  // },
-  // user_service: {
-  //   title: "User Management",
-  //   description: "User authentication and profile management system",
-  //   icon: Users,
-  //   category: "Core Service",
-  //   features: ["User authentication", "Profile management", "Access control", "Security management"],
-  //   requiredTables: ["users_table"],
-  //   optionalTables: [],
-  //   fields: {
-  //     users_table: ["user_id", "password", "name", "email", "gender"]
-  //   }
-  // },
-  // resources: {
-  //   title: "Resource Management",
-  //   description: "File and asset management system",
-  //   icon: Database,
-  //   category: "Core Service",
-  //   features: ["File storage", "Asset management", "Directory organization", "Media handling"],
-  //   requiredTables: [],
-  //   optionalTables: [],
-  //   fields: {},
-  //   isResourceService: true
-  // }
+  catalog: {
+    title: "Catalog",
+    description: "Comprehensive product catalog management system",
+    icon: Package,
+    category: "Core Service",
+    features: ["Product management", "Category organization", "Inventory tracking", "Pricing management"],
+    requiredTables: ["products_table"],
+    optionalTables: ["cart_items_table", "bills_table", "bill_items_table"],
+    fields: {
+      products_table: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"],
+      cart_items_table: ["user_id", "product_id", "quantity"],
+      bills_table: ["bill_number", "user_id", "total_price", "discounted_total", "bill_date"],
+      bill_items_table: ["bill_number", "product_id", "quantity", "total_price", "discounted_price"]
+    }
+  },
+  recruitment: {
+    title: "Recruitment",
+    description: "Job posting and candidate management platform",
+    icon: Briefcase,
+    category: "Core Service",
+    features: ["Job posting", "Candidate tracking", "Application management", "Interview scheduling"],
+    requiredTables: ["jobs_table"],
+    optionalTables: [],
+    fields: {
+      jobs_table: ["job_id", "job_title", "job_description"]
+    }
+  },
+  queue_manager: {
+    title: "Queue",
+    description: "Efficient customer queue management system",
+    icon: Users,
+    category: "Core Service",
+    features: ["Queue management", "Customer tracking", "Service scheduling", "Wait time estimation"],
+    requiredTables: ["queue_table"],
+    optionalTables: [],
+    fields: {
+      queue_table: ["queue_id", "customer_name", "service_type", "status", "wait_time", "priority"]
+    }
+  },
 };
 
+// Add interface for available services
+interface AvailableService {
+  role: string;
+  service_id: number;
+  service_name: string;
+}
+
 export function ServicesTable() {
-  const [config, setConfig] = useState(initialConfig);
+  const [config, setConfig] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [availableServices, setAvailableServices] = useState<AvailableService[]>([]);
   const navigate = useNavigate();
+  const [selectedBusiness, setSelectedBusiness] = useState(getSelectedBusinessData());
 
-  // Load config when component mounts
+  // Load config and available services when component mounts
   useEffect(() => {
     loadConfig();
+    loadAvailableServices();
   }, []); // Empty dependency array means this runs once on mount
+
+  useEffect(() => {
+    const loadBusinessData = () => {
+      const businessData = getSelectedBusinessData();
+      setSelectedBusiness(businessData);
+      // Pass the business data directly to loadAvailableServices
+      loadAvailableServices(businessData);
+    };
+
+    // Load initial data
+    loadBusinessData();
+
+    // Listen for business changes
+    window.addEventListener(BUSINESS_UPDATED_EVENT, loadBusinessData);
+
+    return () => {
+      window.removeEventListener(BUSINESS_UPDATED_EVENT, loadBusinessData);
+    };
+  }, []);
 
   // Notification system
   const showNotification = (title, description, type = "info") => {
@@ -217,20 +145,32 @@ export function ServicesTable() {
 
   // Load config from API
   const loadConfig = async () => {
-    setLoading(true);
     try {
       const response = await fetch(`${BASE_URL_Retail}/get_config`);
       if (response.ok) {
         const data = await response.json();
         setConfig(data);
-        // showNotification("Success", "Configuration loaded successfully", "success");
       } else {
         throw new Error('Failed to load configuration');
       }
     } catch (error) {
       showNotification("Error", "Failed to load configuration: " + error.message, "error");
-    } finally {
-      setLoading(false);
+    } 
+  };
+
+  // Load available services from API
+  const loadAvailableServices = async (businessData = selectedBusiness) => {
+    try {
+      const url = getBaseUrlByCategory();
+      const response = await fetch(`${url}/services?role=user`);
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableServices(data);
+      } else {
+        throw new Error('Failed to load available services');
+      }
+    } catch (error) {
+      showNotification("Error", "Failed to load available services: " + error.message, "error");
     }
   };
 
@@ -257,9 +197,15 @@ export function ServicesTable() {
     return 'active';
   };
 
-  // Filter services
+  // Filter services based on available services and search term
   const filteredServices = Object.keys(serviceDefinitions).filter(serviceKey => {
     const service = serviceDefinitions[serviceKey];
+    const isAvailable = availableServices.some(
+      availableService => availableService.service_name.toLowerCase() === service.title.toLowerCase()
+    );
+    
+    if (!isAvailable) return false;
+
     return service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
            service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
            service.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -322,14 +268,23 @@ export function ServicesTable() {
                             else if (serviceKey === 'easy_checkout') {
                               navigate('/services/easyCheckout');
                             }
+                            else if (serviceKey === 'catalog') {
+                              navigate('/services/catalog');
+                            }
+                            else if (serviceKey === 'recruitment') {
+                              navigate('/services/recruitment');
+                            }
+                            else if (serviceKey === 'queue_manager') {
+                              navigate('/services/queue');
+                            }
                             else {
                               navigate('/services/configure', { state: { serviceKey } });
                             }
                           }}
                           className="flex-1"
                         >
-                          <Settings className="w-4 h-4 mr-1" />
-                          {isConfigured ? 'Edit' : 'Add Service'}
+                          {/* <Settings className="w-4 h-4 mr-1" /> */}
+                          {isConfigured ? 'Update Service' : 'Add Service'}
                         </Button>
                       </div>
                     </div>
