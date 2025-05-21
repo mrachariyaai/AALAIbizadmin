@@ -5,58 +5,42 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/common/Logo";
-import { BASE_URL } from "@/config";
 
 export function LoginForm() {
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    try {
-      const response = await fetch(`${BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          password: password
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      
+      // Simple validation for demo
+      if (email === "admin@aalai.com" && password === "admin123") {
         toast({
           title: "Login successful",
           description: "Welcome to AALAI Business Admin Interface",
         });
-        if (data.user) {
-          localStorage.setItem("aalaiUser", JSON.stringify(data.user));
-        }
+        localStorage.setItem("aalaiUser", JSON.stringify({
+          email: email,
+          role: "admin",
+          name: "Admin User"
+        }));
         navigate("/dashboard");
       } else {
         toast({
           title: "Login failed",
-          description: data.error || "Invalid credentials",
+          description: "Invalid email or password. Try admin@aalai.com / admin123",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    }, 1000);
   };
 
   return (
@@ -71,12 +55,14 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="userId" className="form-label">User Name</label>
+            <label htmlFor="email" className="form-label">Email</label>
             <Input
-              id="userId"
-              placeholder="Enter your user Name"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
+              id="email"
+              placeholder="name@example.com"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
           </div>
@@ -92,6 +78,7 @@ export function LoginForm() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               required
             />
           </div>
@@ -108,4 +95,3 @@ export function LoginForm() {
     </Card>
   );
 }
-

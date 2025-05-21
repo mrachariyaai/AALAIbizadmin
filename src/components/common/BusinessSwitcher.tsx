@@ -9,61 +9,60 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Building } from "lucide-react";
-import { getUserData, BASE_URL } from "@/config";
 
 type Business = {
-  business_id: number;
+  id: string;
   name: string;
-  category?: string;
-  description?: string;
-  user_id: string;
+  logo?: string;
+  industry?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
 };
 
 // Create a custom event for business updates
 export const BUSINESS_UPDATED_EVENT = "businessUpdated";
 
-export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessChange?: (business: Business) => void }) {
+export function BusinessSwitcher() {
   const [value, setValue] = useState("");
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const loadBusinesses = async () => {
+  const loadBusinesses = () => {
     try {
-      const userData = getUserData();
-      if (!userData || !userData.user_id) {
-        throw new Error("User not found");
-      }
-
-      const response = await fetch(`${BASE_URL}/business/businesses?user_id=${userData.user_id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch businesses");
-      }
-
-      const businessesData = await response.json();
-      const safeBusinesses = Array.isArray(businessesData) ? businessesData : [];
+      // Get businesses from localStorage or use default
+      const savedBusinesses = localStorage.getItem("aalaiBusinesses");
+      const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
+      
+      const initialBusinesses = savedBusinesses 
+        ? JSON.parse(savedBusinesses)
+        : [
+            { id: "b1", name: "Acme Corp" },
+            { id: "b2", name: "Globex Industries" },
+          ];
+      
+      // Ensure we always have an array, even if parsing failed
+      const safeBusinesses = Array.isArray(initialBusinesses) ? initialBusinesses : [];
       
       setBusinesses(safeBusinesses);
       
-      // Get previously selected business ID
-      const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
-      
       // Set the selected business value if it exists in the businesses array
-      if (selectedBusinessId && safeBusinesses.some(b => b.business_id.toString() === selectedBusinessId)) {
+      if (selectedBusinessId && safeBusinesses.some(b => b.id === selectedBusinessId)) {
         setValue(selectedBusinessId);
       } else if (safeBusinesses.length > 0) {
         // If no selected business or selected business not found, set to first business
-        const firstBusinessId = safeBusinesses[0].business_id.toString();
-        setValue(firstBusinessId);
-        localStorage.setItem("aalaiSelectedBusiness", firstBusinessId);
+        setValue(safeBusinesses[0].id);
+        localStorage.setItem("aalaiSelectedBusiness", safeBusinesses[0].id);
       }
 
+      // Mark as loaded after initialization
       setIsLoaded(true);
     } catch (error) {
       console.error("Error loading businesses:", error);
       // Set fallback data in case of error
-      setBusinesses([{ business_id: 0, name: "Default Business", user_id: "" }]);
-      setValue("0");
-      localStorage.setItem("aalaiSelectedBusiness", "0");
+      setBusinesses([{ id: "default", name: "Default Business" }]);
+      setValue("default");
+      localStorage.setItem("aalaiSelectedBusiness", "default");
       setIsLoaded(true);
     }
   };
@@ -73,78 +72,22 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
     loadBusinesses();
     
     // Listen for business updated events
-    const handleBusinessUpdate = () => {
-      console.log("BUSINESS_UPDATED_EVENT received, reloading businesses...");
-      loadBusinesses();
-    };
-    
-    window.addEventListener(BUSINESS_UPDATED_EVENT, handleBusinessUpdate);
-    console.log("Event listener for BUSINESS_UPDATED_EVENT added.");
+    window.addEventListener(BUSINESS_UPDATED_EVENT, loadBusinesses);
     
     // Cleanup
     return () => {
-      window.removeEventListener(BUSINESS_UPDATED_EVENT, handleBusinessUpdate);
-      console.log("Event listener for BUSINESS_UPDATED_EVENT removed.");
+      window.removeEventListener(BUSINESS_UPDATED_EVENT, loadBusinesses);
     };
   }, []);
 
   const handleBusinessChange = (newValue: string) => {
     setValue(newValue);
+    
+    // Save selected business ID to localStorage for persistence
     localStorage.setItem("aalaiSelectedBusiness", newValue);
     
-    // Find the selected business data
-    const selectedBusiness = businesses.find(b => b.business_id.toString() === newValue);
-    if (selectedBusiness) {
-      // Update the settings with business data
-      const businessData = {
-        id: selectedBusiness.business_id.toString(),
-        name: selectedBusiness.name,
-        category: selectedBusiness.category || "",
-        description: selectedBusiness.description || ""
-      };
-      
-      // Store in a format that settings page can understand
-      const businessesData = getBusinessesData();
-      const updatedBusinesses = businessesData ? [...businessesData] : [];
-      
-      // Check if business already exists in the list
-      const existingIndex = updatedBusinesses.findIndex(b => b.id === businessData.id);
-      if (existingIndex >= 0) {
-        updatedBusinesses[existingIndex] = businessData;
-      } else {
-        updatedBusinesses.push(businessData);
-      }
-      
-      setBusinessesData(updatedBusinesses);
-      
-      // Pass the business data to the parent component, if callback exists
-      if (typeof onBusinessChange === 'function') {
-        onBusinessChange(selectedBusiness);
-      }
-    }
-
-    // Dispatch event after data is updated
-    window.dispatchEvent(new Event(BUSINESS_UPDATED_EVENT));
+    // You can add additional logic here if needed when a business is selected
     console.log("Selected business ID:", newValue);
-  };
-
-  // Helper functions to maintain compatibility with Settings page
-  const getBusinessesData = () => {
-    try {
-      const data = localStorage.getItem("aalaiBusinesses");
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error("Error getting businesses data:", error);
-      return [];
-    }
-  };
-
-  const setBusinessesData = (data) => {
-    try {
-      localStorage.setItem("aalaiBusinesses", JSON.stringify(data));
-    } catch (error) {
-      console.error("Error setting businesses data:", error);
-    }
   };
 
   // Don't render until data is loaded
@@ -161,10 +104,10 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
     <Select value={value} onValueChange={handleBusinessChange}>
       <SelectTrigger className="w-[300px]">
         <SelectValue placeholder="Select business">
-          {value && businesses.find(b => b.business_id.toString() === value) && (
+          {value && businesses.find(b => b.id === value) && (
             <div className="flex items-center">
               <Building className="mr-2 h-4 w-4" />
-              {businesses.find(b => b.business_id.toString() === value)?.name}
+              {businesses.find(b => b.id === value)?.name}
             </div>
           )}
         </SelectValue>
@@ -172,7 +115,7 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
       <SelectContent>
         {businesses.length > 0 ? (
           businesses.map((business) => (
-            <SelectItem key={business.business_id} value={business.business_id.toString()}>
+            <SelectItem key={business.id} value={business.id}>
               {business.name}
             </SelectItem>
           ))

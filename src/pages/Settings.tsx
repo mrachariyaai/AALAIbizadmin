@@ -9,64 +9,48 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
-import { Pencil } from "lucide-react";
-import { getUserData } from "@/config"; 
 
 interface Business {
   id: string;
   name: string;
-  category?: string;
-  description?: string;
+  industry?: string;
+  address?: string;
+  email?: string;
+  phone?: string;
 }
 
 const DEFAULT_BUSINESS_DATA = {
   name: "New Business",
-  category: "Bank",
-  description: ""
+  industry: "other",
+  address: "",
+  email: "",
+  phone: ""
 };
 
 export default function Settings() {
   const [businessData, setBusinessData] = useState(DEFAULT_BUSINESS_DATA);
 
-  const user = getUserData(); // Get user data
-
-  // Helper functions to maintain compatibility with BusinessSwitcher
-  const getBusinessesData = () => {
-    try {
-      const data = localStorage.getItem("aalaiBusinesses");
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error("Error getting businesses data:", error);
-      return [];
-    }
-  };
-
-  const setBusinessesData = (data) => {
-    try {
-      localStorage.setItem("aalaiBusinesses", JSON.stringify(data));
-    } catch (error) {
-      console.error("Error setting businesses data:", error);
-    }
-  };
-
   useEffect(() => {
     const loadBusinessData = () => {
       const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
-      const businesses = getBusinessesData();
+      const savedBusinesses = localStorage.getItem("aalaiBusinesses");
       
-      if (!selectedBusinessId || !businesses || businesses.length === 0) {
+      if (!selectedBusinessId || !savedBusinesses) {
         setBusinessData(DEFAULT_BUSINESS_DATA);
         return;
       }
 
       try {
+        const businesses = JSON.parse(savedBusinesses) as Business[];
         const currentBusiness = businesses.find((b) => b.id === selectedBusinessId);
         
         if (currentBusiness) {
           setBusinessData({
             name: currentBusiness.name || DEFAULT_BUSINESS_DATA.name,
-            category: currentBusiness.category || DEFAULT_BUSINESS_DATA.category,
-            description: currentBusiness.description || DEFAULT_BUSINESS_DATA.description
+            industry: currentBusiness.industry || DEFAULT_BUSINESS_DATA.industry,
+            address: currentBusiness.address || DEFAULT_BUSINESS_DATA.address,
+            email: currentBusiness.email || DEFAULT_BUSINESS_DATA.email,
+            phone: currentBusiness.phone || DEFAULT_BUSINESS_DATA.phone
           });
         } else {
           setBusinessData(DEFAULT_BUSINESS_DATA);
@@ -90,36 +74,30 @@ export default function Settings() {
 
   const handleSaveChanges = () => {
     const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
-    const businesses = getBusinessesData();
+    const savedBusinesses = localStorage.getItem("aalaiBusinesses");
     
-    if (!selectedBusinessId) {
-      console.error("No business selected");
+    if (!selectedBusinessId || !savedBusinesses) {
+      console.error("No business selected or no businesses found");
       return;
     }
 
     try {
-      let updatedBusinesses = [...(businesses || [])];
-      const existingIndex = updatedBusinesses.findIndex((b) => b.id === selectedBusinessId);
+      const businesses = JSON.parse(savedBusinesses) as Business[];
+      const updatedBusinesses = businesses.map((b) => {
+        if (b.id === selectedBusinessId) {
+          return {
+            ...b,
+            name: businessData.name || DEFAULT_BUSINESS_DATA.name,
+            industry: businessData.industry || DEFAULT_BUSINESS_DATA.industry,
+            address: businessData.address || DEFAULT_BUSINESS_DATA.address,
+            email: businessData.email || DEFAULT_BUSINESS_DATA.email,
+            phone: businessData.phone || DEFAULT_BUSINESS_DATA.phone
+          };
+        }
+        return b;
+      });
       
-      if (existingIndex >= 0) {
-        // Update existing business
-        updatedBusinesses[existingIndex] = {
-          ...updatedBusinesses[existingIndex],
-          name: businessData.name || DEFAULT_BUSINESS_DATA.name,
-          category: businessData.category || DEFAULT_BUSINESS_DATA.category,
-          description: businessData.description || DEFAULT_BUSINESS_DATA.description
-        };
-      } else {
-        // Add new business
-        updatedBusinesses.push({
-          id: selectedBusinessId,
-          name: businessData.name || DEFAULT_BUSINESS_DATA.name,
-          category: businessData.category || DEFAULT_BUSINESS_DATA.category,
-          description: businessData.description || DEFAULT_BUSINESS_DATA.description
-        });
-      }
-      
-      setBusinessesData(updatedBusinesses);
+      localStorage.setItem("aalaiBusinesses", JSON.stringify(updatedBusinesses));
       window.dispatchEvent(new Event(BUSINESS_UPDATED_EVENT));
     } catch (error) {
       console.error("Error saving business data:", error);
@@ -154,66 +132,100 @@ export default function Settings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
+                    <Label htmlFor="industry">Industry</Label>
                     <Select 
-                      value={businessData.category} 
-                      onValueChange={(value) => setBusinessData(prev => ({ ...prev, category: value || DEFAULT_BUSINESS_DATA.category }))}
+                      value={businessData.industry} 
+                      onValueChange={(value) => setBusinessData(prev => ({ ...prev, industry: value || DEFAULT_BUSINESS_DATA.industry }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select industry" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Bank">Bank</SelectItem>
-                        <SelectItem value="Retail">Retail</SelectItem>
-                        <SelectItem value="Salon">Salon</SelectItem>
-                        <SelectItem value="Religious">Religious</SelectItem>
-                        <SelectItem value="Hospital">Hospital</SelectItem>
+                        <SelectItem value="retail">Retail</SelectItem>
+                        <SelectItem value="healthcare">Healthcare</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="technology">Technology</SelectItem>
+                        <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="address">Address</Label>
                   <Textarea 
-                    id="description" 
-                    value={businessData.description}
-                    onChange={(e) => setBusinessData(prev => ({ ...prev, description: e.target.value || DEFAULT_BUSINESS_DATA.description }))}
-                    placeholder="Enter business description"
+                    id="address" 
+                    value={businessData.address}
+                    onChange={(e) => setBusinessData(prev => ({ ...prev, address: e.target.value || DEFAULT_BUSINESS_DATA.address }))}
+                    placeholder="Enter business address"
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Business Email</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      value={businessData.email}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, email: e.target.value || DEFAULT_BUSINESS_DATA.email }))}
+                      placeholder="Enter business email"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Business Phone</Label>
+                    <Input 
+                      id="phone" 
+                      type="tel" 
+                      value={businessData.phone}
+                      onChange={(e) => setBusinessData(prev => ({ ...prev, phone: e.target.value || DEFAULT_BUSINESS_DATA.phone }))}
+                      placeholder="Enter business phone"
+                    />
+                  </div>
                 </div>
                 <div className="pt-4">
                   <Button onClick={handleSaveChanges}>Save Changes</Button>
                 </div>
               </CardContent>
             </Card>
-
+            
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription>Your account details</CardDescription>
-                </div>
+              <CardHeader>
+                <CardTitle>Regional Settings</CardTitle>
+                <CardDescription>Configure timezone and locale preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Name</Label>
-                    <div className="text-sm">{user ? user.name : "-"}</div>
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Select defaultValue="pst">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pst">Pacific Time (PST/PDT)</SelectItem>
+                        <SelectItem value="mst">Mountain Time (MST/MDT)</SelectItem>
+                        <SelectItem value="cst">Central Time (CST/CDT)</SelectItem>
+                        <SelectItem value="est">Eastern Time (EST/EDT)</SelectItem>
+                        <SelectItem value="utc">Coordinated Universal Time (UTC)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>User Name</Label>
-                    <div className="text-sm">{user ? user.user_id : "-"}</div>
+                    <Label htmlFor="dateFormat">Date Format</Label>
+                    <Select defaultValue="mdy">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mdy">MM/DD/YYYY</SelectItem>
+                        <SelectItem value="dmy">DD/MM/YYYY</SelectItem>
+                        <SelectItem value="ymd">YYYY/MM/DD</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <div className="text-sm">{user ? user.email : "-"}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Gender</Label>
-                    <div className="text-sm">{user ? user.gender : "-"}</div>
-                  </div>
+                <div className="pt-4">
+                  <Button>Save Changes</Button>
                 </div>
               </CardContent>
             </Card>
