@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react";
 import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
 import { Pencil } from "lucide-react";
-import { getUserData, getSelectedBusinesses } from "@/config"; 
+import { getUserData } from "@/config"; 
 
 interface Business {
   id: string;
@@ -51,7 +51,7 @@ export default function Settings() {
 
   useEffect(() => {
     const loadBusinessData = () => {
-      const selectedBusinessId = getSelectedBusinesses();
+      const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
       const businesses = getBusinessesData();
       
       if (!selectedBusinessId || !businesses || businesses.length === 0) {
@@ -89,7 +89,7 @@ export default function Settings() {
   }, []);
 
   const handleSaveChanges = () => {
-    const selectedBusinessId = getSelectedBusinesses();
+    const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
     const businesses = getBusinessesData();
     
     if (!selectedBusinessId) {

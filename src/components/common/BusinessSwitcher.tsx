@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Building } from "lucide-react";
-import { getUserData, BASE_URL, getSelectedBusinesses, setSelectedBusinesses } from "@/config";
+import { getUserData, BASE_URL } from "@/config";
 
 type Business = {
   business_id: number;
@@ -43,8 +43,9 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
       const safeBusinesses = Array.isArray(businessesData) ? businessesData : [];
       
       setBusinesses(safeBusinesses);
+      
       // Get previously selected business ID
-      const selectedBusinessId = getSelectedBusinesses();
+      const selectedBusinessId = localStorage.getItem("aalaiSelectedBusiness");
       
       // Set the selected business value if it exists in the businesses array
       if (selectedBusinessId && safeBusinesses.some(b => b.business_id.toString() === selectedBusinessId)) {
@@ -53,7 +54,7 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
         // If no selected business or selected business not found, set to first business
         const firstBusinessId = safeBusinesses[0].business_id.toString();
         setValue(firstBusinessId);
-        setSelectedBusinesses(firstBusinessId);
+        localStorage.setItem("aalaiSelectedBusiness", firstBusinessId);
       }
 
       setIsLoaded(true);
@@ -62,7 +63,7 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
       // Set fallback data in case of error
       setBusinesses([{ business_id: 0, name: "Default Business", user_id: "" }]);
       setValue("0");
-      setSelectedBusinesses("0");
+      localStorage.setItem("aalaiSelectedBusiness", "0");
       setIsLoaded(true);
     }
   };
@@ -89,7 +90,7 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
 
   const handleBusinessChange = (newValue: string) => {
     setValue(newValue);
-    setSelectedBusinesses(newValue);
+    localStorage.setItem("aalaiSelectedBusiness", newValue);
     
     // Find the selected business data
     const selectedBusiness = businesses.find(b => b.business_id.toString() === newValue);
@@ -120,11 +121,11 @@ export function BusinessSwitcher({ onBusinessChange = undefined }: { onBusinessC
       if (typeof onBusinessChange === 'function') {
         onBusinessChange(selectedBusiness);
       }
-
-      // Dispatch event after data is updated
-      window.dispatchEvent(new Event(BUSINESS_UPDATED_EVENT));
-      console.log("Selected business ID:", newValue);
     }
+
+    // Dispatch event after data is updated
+    window.dispatchEvent(new Event(BUSINESS_UPDATED_EVENT));
+    console.log("Selected business ID:", newValue);
   };
 
   // Helper functions to maintain compatibility with Settings page
