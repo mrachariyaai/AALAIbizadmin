@@ -146,6 +146,7 @@ export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessD
                   <SelectItem value="Salon">Salon</SelectItem>
                   <SelectItem value="Religious">Religious</SelectItem>
                   <SelectItem value="Hospital">Hospital</SelectItem>
+                  <SelectItem value="Education">Education</SelectItem>
                 </SelectContent>
               </Select>
             </div>
