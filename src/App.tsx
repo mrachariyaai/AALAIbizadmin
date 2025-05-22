@@ -25,6 +25,7 @@ import { EasyCheckoutServiceConfigurationWizard } from "./components/services/Ea
 import { CatalogServiceConfigurationWizard } from "./components/services/CatalogServiceConfigurationWizard";
 import { RecruitmentServiceConfigurationWizard } from "./components/services/RecruitmentServiceConfigurationWizard";
 import { QueueServiceConfigurationWizard } from "./components/services/QueueServiceConfigurationWizard";
+import { ClassTable } from "./components/Education/ClassTable";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/services/catalog" element={<CatalogServiceConfigurationWizard />} />
           <Route path="/services/recruitment" element={<RecruitmentServiceConfigurationWizard />} />
           <Route path="/services/queue" element={<QueueServiceConfigurationWizard />} />
+          <Route path="/services/ClassTable" element={<ClassTable />} />
 
           <Route path="/roles" element={<Roles />} />
           <Route path="/roles/new" element={<NewRole />} />
