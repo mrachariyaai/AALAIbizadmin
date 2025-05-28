@@ -3,10 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, AlertCircle, Edit3, ArrowLeft, Database as DatabaseIcon } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, Edit3, ArrowLeft, Database as DatabaseIcon, Check, ArrowRight } from "lucide-react";
 import { PageLayout } from "../common/PageLayout";
 import { getBaseUrlByCategory, TestConnection_URL } from "@/config";
 import { useNavigate } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface QueueConfig {
   DB_CONNECTION: string;
@@ -77,6 +79,18 @@ function ConfigurationPreview({ config, onEdit }: { config: Config; onEdit: () =
 
 export function QueueServiceConfigurationWizard() {
   const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [formData, setFormData] = useState({
+    serviceName: "Queue Service",
+    maxQueueSize: "100",
+    processingInterval: "5",
+    enablePriorityQueue: true,
+    enableAutoScaling: true,
+    enableNotifications: true,
+    enableRetry: true,
+    maxRetries: "3",
+    retryDelay: "60",
+  });
   const [connection, setConnection] = useState({
     string: "",
     isLocal: false,
@@ -258,6 +272,223 @@ export function QueueServiceConfigurationWizard() {
         editing: true,
         loading: false
       }));
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleNext = () => {
+    if (currentStep < 3) {
+      setCurrentStep(prev => prev + 1);
+    } else {
+      // Handle form submission
+      console.log("Form submitted:", formData);
+      navigate('/services');
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(prev => prev - 1);
+    } else {
+      navigate('/services');
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="serviceName" className="text-sm font-medium text-gray-700">Service Name</Label>
+              <Input
+                id="serviceName"
+                value={formData.serviceName}
+                onChange={(e) => handleInputChange("serviceName", e.target.value)}
+                className="border-2 border-gray-200 rounded-lg"
+                placeholder="Enter service name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxQueueSize" className="text-sm font-medium text-gray-700">Maximum Queue Size</Label>
+              <Select
+                value={formData.maxQueueSize}
+                onValueChange={(value) => handleInputChange("maxQueueSize", value)}
+              >
+                <SelectTrigger className="border-2 border-gray-200 rounded-lg">
+                  <SelectValue placeholder="Select queue size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50 items</SelectItem>
+                  <SelectItem value="100">100 items</SelectItem>
+                  <SelectItem value="200">200 items</SelectItem>
+                  <SelectItem value="500">500 items</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="processingInterval" className="text-sm font-medium text-gray-700">Processing Interval (seconds)</Label>
+              <Select
+                value={formData.processingInterval}
+                onValueChange={(value) => handleInputChange("processingInterval", value)}
+              >
+                <SelectTrigger className="border-2 border-gray-200 rounded-lg">
+                  <SelectValue placeholder="Select interval" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 second</SelectItem>
+                  <SelectItem value="5">5 seconds</SelectItem>
+                  <SelectItem value="10">10 seconds</SelectItem>
+                  <SelectItem value="30">30 seconds</SelectItem>
+                  <SelectItem value="60">1 minute</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-gray-700">Priority Queue</Label>
+                <p className="text-sm text-gray-500">Enable priority-based processing</p>
+              </div>
+              <Switch
+                checked={formData.enablePriorityQueue}
+                onCheckedChange={(checked) => handleInputChange("enablePriorityQueue", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-gray-700">Auto Scaling</Label>
+                <p className="text-sm text-gray-500">Automatically scale processing capacity</p>
+              </div>
+              <Switch
+                checked={formData.enableAutoScaling}
+                onCheckedChange={(checked) => handleInputChange("enableAutoScaling", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-gray-700">Notifications</Label>
+                <p className="text-sm text-gray-500">Send alerts for queue events</p>
+              </div>
+              <Switch
+                checked={formData.enableNotifications}
+                onCheckedChange={(checked) => handleInputChange("enableNotifications", checked)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium text-gray-700">Retry Failed Items</Label>
+                <p className="text-sm text-gray-500">Automatically retry failed queue items</p>
+              </div>
+              <Switch
+                checked={formData.enableRetry}
+                onCheckedChange={(checked) => handleInputChange("enableRetry", checked)}
+              />
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="maxRetries" className="text-sm font-medium text-gray-700">Maximum Retries</Label>
+              <Select
+                value={formData.maxRetries}
+                onValueChange={(value) => handleInputChange("maxRetries", value)}
+              >
+                <SelectTrigger className="border-2 border-gray-200 rounded-lg">
+                  <SelectValue placeholder="Select max retries" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 retry</SelectItem>
+                  <SelectItem value="2">2 retries</SelectItem>
+                  <SelectItem value="3">3 retries</SelectItem>
+                  <SelectItem value="5">5 retries</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="retryDelay" className="text-sm font-medium text-gray-700">Retry Delay (seconds)</Label>
+              <Select
+                value={formData.retryDelay}
+                onValueChange={(value) => handleInputChange("retryDelay", value)}
+              >
+                <SelectTrigger className="border-2 border-gray-200 rounded-lg">
+                  <SelectValue placeholder="Select retry delay" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30 seconds</SelectItem>
+                  <SelectItem value="60">1 minute</SelectItem>
+                  <SelectItem value="300">5 minutes</SelectItem>
+                  <SelectItem value="600">10 minutes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">Configuration Summary</h3>
+              <ul className="space-y-2 text-sm text-blue-700">
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Service Name: {formData.serviceName}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Max Queue Size: {formData.maxQueueSize} items</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Processing Interval: {formData.processingInterval} seconds</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Priority Queue: {formData.enablePriorityQueue ? "Enabled" : "Disabled"}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Auto Scaling: {formData.enableAutoScaling ? "Enabled" : "Disabled"}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Notifications: {formData.enableNotifications ? "Enabled" : "Disabled"}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Retry Failed Items: {formData.enableRetry ? "Enabled" : "Disabled"}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Max Retries: {formData.maxRetries}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  <span>Retry Delay: {formData.retryDelay} seconds</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 

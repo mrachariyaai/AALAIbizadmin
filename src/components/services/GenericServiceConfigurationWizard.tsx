@@ -6,29 +6,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, XCircle, AlertCircle, Edit3, ArrowLeft, Database as DatabaseIcon } from "lucide-react";
 import { PageLayout } from "../common/PageLayout";
-import { getBaseUrlByCategory, TestConnection_URL } from "@/config";
-import { useNavigate } from "react-router-dom";
+import { getBaseUrlByCategory, TestConnection_URL, Config_URL } from "@/config";
+import { useNavigate, useParams } from "react-router-dom";
 
-interface TableMapping {
-  name: string;
+interface TableMappingData {
   fields: Record<string, string>;
-}
-
-interface EasyCheckoutConfig {
-  DB_CONNECTION: string;
-  TABLE_MAPPING: Record<string, TableMapping>;
-  loyalty_program?: {
-    enabled: boolean;
-    default_loyalty_score: number;
-  };
-  discount_rules?: {
-    default_discount_percentage: number;
-    max_discount_percentage: number;
-  };
+  name: string;
 }
 
 interface Config {
-  easy_checkout?: EasyCheckoutConfig;
+  DB_CONNECTION: string;
+  DB_Type: string;
+  SVD?: {
+    latent_factors: string;
+  };
+  TABLE_MAPPING?: Record<string, TableMappingData>;
   loyalty_program?: {
     enabled: boolean;
     default_loyalty_score: number;
@@ -48,10 +40,15 @@ interface Notification {
 
 interface ServiceConfig {
   title: string;
-  tables: {
+  tables?: {
     [key: string]: {
       fields: string[];
     };
+  };
+  DB_CONNECTION: string;
+  DB_Type: string;
+  SVD?: {
+    latent_factors: string;
   };
   loyalty_program?: {
     enabled: boolean;
@@ -63,6 +60,19 @@ interface ServiceConfig {
   };
 }
 
+interface ServiceConfiguration {
+  DB_CONNECTION: string;
+  DB_Type: string;
+  TABLE_MAPPING?: Record<string, TableMappingData>;
+  loyalty_and_discount?: {
+    enabled: string;
+    discount_rules_table: {
+      name: string;
+      fields: Record<string, string>;
+    };
+  };
+}
+
 function ConfigurationPreview({ config, onEdit, serviceConfig }: { 
   config: Config; 
   onEdit: () => void;
@@ -70,14 +80,14 @@ function ConfigurationPreview({ config, onEdit, serviceConfig }: {
 }) {
   const navigate = useNavigate();
   
-  if (!config.easy_checkout) return null;
+  if (!config) return null;
 
   return (
     <Card className="mx-auto shadow-lg border-2 border-gray-100">
       <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-2xl font-bold text-gray-800">Easy Checkout Configuration</CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-800">{serviceConfig.title} Configuration</CardTitle>
             <CardDescription className="text-gray-600 mt-1">Current configuration settings</CardDescription>
           </div>
           <div className="flex items-center gap-3">
@@ -109,88 +119,67 @@ function ConfigurationPreview({ config, onEdit, serviceConfig }: {
             Database Connection
           </h4>
           <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
-            {config.easy_checkout.DB_CONNECTION.startsWith('local_file:') 
+            {config.DB_CONNECTION.startsWith('local_file:') 
               ? 'Local Database File' 
-              : config.easy_checkout.DB_CONNECTION}
+              : config.DB_CONNECTION}
           </p>
         </div>
 
-        <div className="space-y-6">
-          <h4 className="font-semibold text-lg text-gray-800">Table Mappings</h4>
-          {Object.entries(config.easy_checkout.TABLE_MAPPING).map(([tableKey, mapping]: [string, TableMapping]) => (
-            <div key={tableKey} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h5 className="text-base font-semibold mb-4 text-indigo-600 capitalize">
-                {tableKey.replace('_table', '')} Table: {mapping.name}
-              </h5>
-              <div className="grid grid-cols-2 gap-6">
-                {Object.entries(mapping.fields).map(([field, column]: [string, string]) => (
-                  <div key={field} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                    <span className="text-sm font-medium min-w-[120px] text-gray-700">{field.replace('_', ' ')}:</span>
-                    <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded border border-gray-200">{column}</span>
+        {config.TABLE_MAPPING && (
+          <div className="space-y-6">
+            <h4 className="font-semibold text-lg text-gray-800">Table Mappings</h4>
+            {Object.entries(config.TABLE_MAPPING).map(([tableKey, mapping]: [string, TableMappingData]) => (
+              <div key={tableKey} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h5 className="text-base font-semibold mb-4 text-indigo-600 capitalize">
+                  {tableKey.replace('_table', '')} Table: {mapping.name}
+                </h5>
+                <div className="grid grid-cols-2 gap-6">
+                  {Object.entries(mapping.fields).map(([field, column]: [string, string]) => (
+                    <div key={field} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                      <span className="text-sm font-medium min-w-[120px] text-gray-700">{field.replace('_', ' ')}:</span>
+                      <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded border border-gray-200">{column}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Render service-specific configurations */}
+        {Object.entries(config).map(([key, value]) => {
+          if (key !== 'DB_CONNECTION' && key !== 'DB_Type' && key !== 'TABLE_MAPPING' && key !== 'SVD') {
+            return (
+              <div key={key} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h4 className="font-semibold text-lg mb-4 text-gray-800 capitalize">
+                  {key.replace(/_/g, ' ')}
+                </h4>
+                {typeof value === 'object' && value !== null && (
+                  <div className="grid grid-cols-2 gap-6">
+                    {Object.entries(value).map(([subKey, subValue]) => (
+                      <div key={subKey} className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
+                        <span className="text-sm font-medium min-w-[120px] text-gray-700">
+                          {subKey.replace(/_/g, ' ')}:
+                        </span>
+                        <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded border border-gray-200">
+                          {String(subValue)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Loyalty Program Configuration Preview */}
-        {serviceConfig.loyalty_program && config.loyalty_program && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h4 className="font-semibold text-lg mb-4 text-gray-800">Loyalty Program Settings</h4>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                <span className="text-sm font-medium min-w-[120px] text-gray-700">Status:</span>
-                <span className="text-sm">
-                  {config.loyalty_program.enabled ? (
-                    <span className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded border border-green-200">
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Enabled
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-red-600 bg-red-50 px-3 py-1 rounded border border-red-200">
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Disabled
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                <span className="text-sm font-medium min-w-[120px] text-gray-700">Default Score:</span>
-                <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded border border-gray-200">
-                  {config.loyalty_program.default_loyalty_score}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Discount Rules Configuration Preview */}
-        {serviceConfig.discount_rules && config.discount_rules && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h4 className="font-semibold text-lg mb-4 text-gray-800">Discount Rules Settings</h4>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                <span className="text-sm font-medium min-w-[120px] text-gray-700">Default Discount:</span>
-                <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded border border-gray-200">
-                  {config.discount_rules.default_discount_percentage}%
-                </span>
-              </div>
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                <span className="text-sm font-medium min-w-[120px] text-gray-700">Max Discount:</span>
-                <span className="text-sm text-gray-600 bg-white px-3 py-1 rounded border border-gray-200">
-                  {config.discount_rules.max_discount_percentage}%
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+            );
+          }
+          return null;
+        })}
       </CardContent>
     </Card>
   );
 }
 
 export function GenericServiceConfigurationWizard() {
+  const { serviceType } = useParams();
   const navigate = useNavigate();
   const [connection, setConnection] = useState({
     string: "",
@@ -204,57 +193,16 @@ export function GenericServiceConfigurationWizard() {
   
   const [database, setDatabase] = useState(null);
   const [tables, setTables] = useState([]);
-  const [tableColumns, setTableColumns] = useState<Record<string, string[]>>({
-    products: [],
-    cart_items: [],
-    bills: [],
-    bill_items: []
-  });
-  const [selectedTable, setSelectedTable] = useState<Record<string, string>>({
-    products: "",
-    cart_items: "",
-    bills: "",
-    bill_items: ""
-  });
-  const [fieldMappings, setFieldMappings] = useState<Record<string, Record<string, string>>>({
-    products: {},
-    cart_items: {},
-    bills: {},
-    bill_items: {}
-  });
+  const [tableColumns, setTableColumns] = useState<Record<string, string[]>>({});
+  const [selectedTable, setSelectedTable] = useState<Record<string, string>>({});
+  const [fieldMappings, setFieldMappings] = useState<Record<string, Record<string, string>>>({});
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [config, setConfig] = useState<Config>();
   const [loading, setLoading] = useState(false);
   const [showConfigUI, setShowConfigUI] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [BaseURL, setBaseURL] = useState(getBaseUrlByCategory())
-  
-  const serviceConfig = {
-    title: "Easy Checkout",
-    tables: {
-      products: {
-        fields: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"]
-      },
-      cart_items: {
-        fields: ["user_id", "product_id", "quantity"]
-      },
-      bills: {
-        fields: ["bill_number", "user_id", "total_price", "discounted_total", "bill_date"]
-      },
-      bill_items: {
-        fields: ["bill_number", "product_id", "quantity", "total_price", "discounted_price"]
-      }
-    },
-    loyalty_program: {
-      enabled: true,
-      default_loyalty_score: 0
-    },
-    discount_rules: {
-      default_discount_percentage: 5,
-      max_discount_percentage: 50
-    }
-  };
-
+  const [BaseURL, setBaseURL] = useState(getBaseUrlByCategory());
+  const [serviceConfig, setServiceConfig] = useState<ServiceConfig | null>(null);
   const [loyaltyConfig, setLoyaltyConfig] = useState({
     enabled: true,
     default_loyalty_score: 0
@@ -265,8 +213,82 @@ export function GenericServiceConfigurationWizard() {
   });
 
   useEffect(() => {
-    loadConfig();
-  }, []);
+    loadServiceConfig();
+  }, [serviceType]);
+
+  const loadServiceConfig = async () => {
+    try {
+      // Convert URL-friendly name back to display name
+      const displayName = serviceType?.split('_').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+
+      const response = await fetch(`${Config_URL}/services/${displayName}`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Create service config with dynamic fields
+        const newServiceConfig = {
+          title: displayName || '',
+          tables: {},
+          ...data // Include all other service-specific configurations
+        };
+
+        // Handle TABLE_MAPPING structure
+        if (data.TABLE_MAPPING) {
+          const tables: Record<string, { fields: string[] }> = {};
+          Object.entries(data.TABLE_MAPPING).forEach(([tableKey, mapping]: [string, TableMappingData]) => {
+            const tableType = tableKey.replace('_table', '');
+            tables[tableType] = {
+              fields: Object.keys(mapping.fields)
+            };
+          });
+          newServiceConfig.tables = tables;
+        }
+        // Handle loyalty_and_discount specific structure
+        else if (data.loyalty_and_discount) {
+          if (data.loyalty_and_discount.discount_rules_table) {
+            newServiceConfig.tables = {
+              discount_rules: {
+                fields: Object.keys(data.loyalty_and_discount.discount_rules_table.fields)
+              }
+            };
+          }
+        }
+        
+        setServiceConfig(newServiceConfig);
+        
+        // Initialize table columns and mappings based on the service config
+        if (newServiceConfig.tables) {
+          const initialTableColumns: Record<string, string[]> = {};
+          const initialSelectedTable: Record<string, string> = {};
+          const initialFieldMappings: Record<string, Record<string, string>> = {};
+          
+          Object.keys(newServiceConfig.tables).forEach(tableKey => {
+            initialTableColumns[tableKey] = [];
+            initialSelectedTable[tableKey] = "";
+            initialFieldMappings[tableKey] = {};
+          });
+          
+          setTableColumns(initialTableColumns);
+          setSelectedTable(initialSelectedTable);
+          setFieldMappings(initialFieldMappings);
+        }
+
+        // Initialize service-specific configurations if they exist
+        if (data.loyalty_and_discount) {
+          setLoyaltyConfig({
+            enabled: data.loyalty_and_discount.enabled === "true",
+            default_loyalty_score: 0
+          });
+        }
+      } else {
+        throw new Error('Failed to load service configuration');
+      }
+    } catch (error) {
+      showNotification("Error", "Failed to load service configuration: " + error.message, "error");
+    }
+  };
 
   const showNotification = (title: string, description: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
@@ -274,42 +296,6 @@ export function GenericServiceConfigurationWizard() {
     setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
     }, 5000);
-  };
-
-  const loadConfig = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${BaseURL}/get_config`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data) {
-          setConfig(data);
-          if (data.easy_checkout?.DB_CONNECTION) {
-            const isLocal = data.easy_checkout.DB_CONNECTION.startsWith('local_file:');
-            setConnection(prev => ({
-              ...prev,
-              string: isLocal ? '' : data.easy_checkout.DB_CONNECTION,
-              isLocal,
-              connected: false,
-              editing: true
-            }));
-          }
-          // Set loyalty and discount configurations if they exist
-          if (data.loyalty_program) {
-            setLoyaltyConfig(data.loyalty_program);
-          }
-          if (data.discount_rules) {
-            setDiscountConfig(data.discount_rules);
-          }
-        }
-      } else {
-        throw new Error('Failed to load configuration');
-      }
-    } catch (error) {
-      showNotification("Error", "Failed to load configuration: " + error.message, "error");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const testConnection = async () => {
@@ -328,7 +314,6 @@ export function GenericServiceConfigurationWizard() {
         body: JSON.stringify({
           connection_string: connection.string,
           connection_type: 'mysql'
-          // connection_type: 'sqlite'
         })
       });
 
@@ -393,11 +378,6 @@ export function GenericServiceConfigurationWizard() {
       }
 
       setTableColumns(prev => ({ ...prev, [tableType]: data.columns }));
-      // showNotification(
-      //   "Columns loaded",
-      //   `Successfully loaded ${data.columns.length} columns for table: ${tableValue}`,
-      //   "success"
-      // );
     } catch (error) {
       showNotification("Error", error.message || "Failed to fetch table columns", "error");
       setTableColumns(prev => ({ ...prev, [tableType]: [] }));
@@ -443,25 +423,43 @@ export function GenericServiceConfigurationWizard() {
     setConnection(prev => ({ ...prev, saving: true }));
 
     try {
-      const newConfig = {
-        easy_checkout: {
-          DB_CONNECTION: connection.isLocal 
-            ? `${connection.file?.name || 'uploaded_file'}`
-            : connection.string,
-          TABLE_MAPPING: {},
-          loyalty_program: loyaltyConfig,
-          discount_rules: discountConfig
-        }
+      const newConfig: ServiceConfiguration = {
+        DB_CONNECTION: connection.isLocal 
+          ? `${connection.file?.name || 'uploaded_file'}`
+          : connection.string,
+        DB_Type: "mysql"
       };
 
-      Object.keys(selectedTable).forEach(tableType => {
-        if (selectedTable[tableType]) {
-          newConfig.easy_checkout.TABLE_MAPPING[`${tableType}_table`] = {
-            name: selectedTable[tableType],
-            fields: fieldMappings[tableType]
-          };
+      // Handle loyalty and discount service specifically
+      if (serviceConfig?.title === "Loyalty and discount") {
+        newConfig.loyalty_and_discount = {
+          enabled: loyaltyConfig.enabled.toString(),
+          discount_rules_table: {
+            name: selectedTable.discount_rules || "",
+            fields: {}
+          }
+        };
+
+        // Add field mappings for discount rules table
+        if (selectedTable.discount_rules) {
+          Object.entries(fieldMappings.discount_rules || {}).forEach(([field, column]) => {
+            if (newConfig.loyalty_and_discount) {
+              newConfig.loyalty_and_discount.discount_rules_table.fields[field] = column;
+            }
+          });
         }
-      });
+      } else {
+        // Handle other services
+        newConfig.TABLE_MAPPING = {};
+        Object.keys(selectedTable).forEach(tableType => {
+          if (selectedTable[tableType]) {
+            newConfig.TABLE_MAPPING![`${tableType}_table`] = {
+              name: selectedTable[tableType],
+              fields: fieldMappings[tableType]
+            };
+          }
+        });
+      }
 
       const response = await fetch(`${BaseURL}/config`, {
         method: 'POST',
@@ -498,25 +496,10 @@ export function GenericServiceConfigurationWizard() {
       file: null,
       saving: false
     });
-    setSelectedTable({
-      products: "",
-      cart_items: "",
-      bills: "",
-      bill_items: ""
-    });
-    setFieldMappings({
-      products: {},
-      cart_items: {},
-      bills: {},
-      bill_items: {}
-    });
+    setSelectedTable({});
+    setFieldMappings({});
     setTables([]);
-    setTableColumns({
-      products: [],
-      cart_items: [],
-      bills: [],
-      bill_items: []
-    });
+    setTableColumns({});
     setDatabase(null);
     setShowConfigUI(true);
   };
@@ -524,24 +507,16 @@ export function GenericServiceConfigurationWizard() {
   const handleEditMode = async () => {
     setIsEditing(true);
     
-    if (config?.easy_checkout) {
-      const isLocal = config.easy_checkout.DB_CONNECTION.startsWith('local_file:');
+    if (config?.DB_CONNECTION) {
+      const isLocal = config.DB_CONNECTION.startsWith('local_file:');
       setConnection(prev => ({
         ...prev,
-        string: isLocal ? '' : config.easy_checkout.DB_CONNECTION,
+        string: isLocal ? '' : config.DB_CONNECTION,
         isLocal,
         connected: false,
         editing: true,
         loading: true
       }));
-
-      // Set loyalty and discount configurations if they exist
-      if (config.easy_checkout.loyalty_program) {
-        setLoyaltyConfig(config.easy_checkout.loyalty_program);
-      }
-      if (config.easy_checkout.discount_rules) {
-        setDiscountConfig(config.easy_checkout.discount_rules);
-      }
 
       try {
         await testConnection();
@@ -550,7 +525,7 @@ export function GenericServiceConfigurationWizard() {
         const newFieldMappings = {};
         const newTableColumns = {};
 
-        Object.entries(config.easy_checkout.TABLE_MAPPING).forEach(([key, value]) => {
+        Object.entries(config.TABLE_MAPPING || {}).forEach(([key, value]) => {
           const tableType = key.replace('_table', '');
           newSelectedTable[tableType] = value.name;
           newFieldMappings[tableType] = value.fields;
@@ -569,17 +544,27 @@ export function GenericServiceConfigurationWizard() {
     }
   };
 
+  if (!serviceConfig) {
+    return (
+      <PageLayout title="Loading...">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        </div>
+      </PageLayout>
+    );
+  }
+
   return (
-    <PageLayout title="Easy Checkout Service Configuration">
+    <PageLayout title={`${serviceConfig.title} Configuration`}>
       <div className="relative mx-auto max-w-7xl">
-        {!config?.easy_checkout && !showConfigUI ? (
+        {!config?.DB_CONNECTION && !showConfigUI ? (
           <Card className="shadow-lg border-2 border-gray-100">
             <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl font-bold text-gray-800">Easy Checkout Service</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-gray-800">{serviceConfig.title}</CardTitle>
                   <CardDescription className="text-gray-600 mt-1">
-                    Connect your database to enable efficient checkout and billing management.
+                    Connect your database to enable {serviceConfig.title.toLowerCase()} functionality.
                   </CardDescription>
                 </div>
                 <Button
@@ -598,7 +583,7 @@ export function GenericServiceConfigurationWizard() {
                 <div className="text-center space-y-3">
                   <h3 className="text-xl font-semibold text-gray-800">No Configuration Found</h3>
                   <p className="text-sm text-gray-500 max-w-md">
-                    Configure your Easy Checkout service to start managing checkouts and bills.
+                    Configure your {serviceConfig.title} service to get started.
                   </p>
                 </div>
                 <Button 
@@ -610,7 +595,7 @@ export function GenericServiceConfigurationWizard() {
               </div>
             </CardContent>
           </Card>
-        ) : config?.easy_checkout && !isEditing ? (
+        ) : config?.DB_CONNECTION && !isEditing ? (
           <ConfigurationPreview 
             config={config} 
             onEdit={handleEditMode}
@@ -621,9 +606,9 @@ export function GenericServiceConfigurationWizard() {
             <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-2xl font-bold text-gray-800">Easy Checkout Configuration</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-gray-800">{serviceConfig.title} Configuration</CardTitle>
                   <CardDescription className="text-gray-600 mt-1">
-                    Configure your Easy Checkout service by connecting to your database
+                    Configure your {serviceConfig.title} service by connecting to your database
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
@@ -636,7 +621,7 @@ export function GenericServiceConfigurationWizard() {
                     <ArrowLeft className="h-4 w-4" />
                     <span>Back to Services</span>
                   </Button>
-                  {config?.easy_checkout && (
+                  {config?.DB_CONNECTION && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -712,14 +697,14 @@ export function GenericServiceConfigurationWizard() {
                 )}
               </div>
               
-              {connection.connected && (
+              {connection.connected && serviceConfig?.tables && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-8">
                   <h4 className="font-semibold text-lg text-gray-800">Table Configuration</h4>
-                  {Object.keys(serviceConfig.tables).map((tableType, index, array) => (
+                  {Object.entries(serviceConfig.tables).map(([tableType, tableConfig], index, array) => (
                     <div key={tableType} className="space-y-6">
                       <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                         <Label
-                          htmlFor={`${tableType}_table`}
+                          htmlFor={`${tableType}`}
                           className="block text-base font-semibold text-indigo-600 mb-4 tracking-wider uppercase"
                         >
                           Select {tableType.replace('_', ' ')} Table
@@ -730,41 +715,67 @@ export function GenericServiceConfigurationWizard() {
                           value={selectedTable[tableType] || ""}
                         >
                           <SelectTrigger className="mt-1.5 border-2 border-gray-200">
-                            <SelectValue placeholder={`Select ${tableType} table`} />
+                            <SelectValue placeholder={`Select ${tableType.replace('_', ' ')} table`} />
                           </SelectTrigger>
                           <SelectContent>
-                            {tables.map((table) => (
+                            {tables?.map((table) => (
                               <SelectItem key={table} value={table}>{table}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
                       
-                      {selectedTable[tableType] && (
+                      {selectedTable[tableType] && tableConfig?.fields && (
                         <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
                           <Label className="text-base font-semibold text-gray-800">Field Mapping</Label>
                           <div className="grid grid-cols-2 gap-6">
-                            {serviceConfig.tables[tableType].fields.map((field) => (
-                              <div key={field} className="space-y-2">
-                                <Label htmlFor={`${tableType}_${field}`} className="text-sm font-medium text-gray-700">
-                                  {field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                </Label>
-                                <Select 
-                                  disabled={!connection.connected || !selectedTable[tableType]}
-                                  onValueChange={(value) => handleFieldMapping(tableType, field, value)}
-                                  value={fieldMappings[tableType][field] || ""}
-                                >
-                                  <SelectTrigger className="border-2 border-gray-200">
-                                    <SelectValue placeholder="Select field" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {tableColumns[tableType].map((column) => (
-                                      <SelectItem key={column} value={column}>{column}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            ))}
+                            {Array.isArray(tableConfig.fields) ? (
+                              // Handle array of fields
+                              tableConfig.fields.map((field) => (
+                                <div key={field} className="space-y-2">
+                                  <Label htmlFor={`${tableType}_${field}`} className="text-sm font-medium text-gray-700">
+                                    {field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </Label>
+                                  <Select 
+                                    disabled={!connection.connected || !selectedTable[tableType]}
+                                    onValueChange={(value) => handleFieldMapping(tableType, field, value)}
+                                    value={fieldMappings[tableType]?.[field] || ""}
+                                  >
+                                    <SelectTrigger className="border-2 border-gray-200">
+                                      <SelectValue placeholder="Select field" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {tableColumns[tableType]?.map((column) => (
+                                        <SelectItem key={column} value={column}>{column}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))
+                            ) : (
+                              // Handle object of fields
+                              Object.entries(tableConfig.fields).map(([field, _]) => (
+                                <div key={field} className="space-y-2">
+                                  <Label htmlFor={`${tableType}_${field}`} className="text-sm font-medium text-gray-700">
+                                    {field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </Label>
+                                  <Select 
+                                    disabled={!connection.connected || !selectedTable[tableType]}
+                                    onValueChange={(value) => handleFieldMapping(tableType, field, value)}
+                                    value={fieldMappings[tableType]?.[field] || ""}
+                                  >
+                                    <SelectTrigger className="border-2 border-gray-200">
+                                      <SelectValue placeholder="Select field" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {tableColumns[tableType]?.map((column) => (
+                                        <SelectItem key={column} value={column}>{column}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
@@ -773,80 +784,6 @@ export function GenericServiceConfigurationWizard() {
                       )}
                     </div>
                   ))}
-
-                  {/* Loyalty Program Configuration */}
-                  {serviceConfig.loyalty_program && (
-                    <>
-                      <div className="border-t border-gray-200 my-6" />
-                      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 space-y-6">
-                        <h4 className="font-semibold text-lg text-gray-800">Loyalty Program Configuration</h4>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="loyalty_enabled" className="text-sm font-medium text-gray-700">Enable Loyalty Program</Label>
-                            <Select
-                              value={loyaltyConfig.enabled.toString()}
-                              onValueChange={(value) => setLoyaltyConfig(prev => ({ ...prev, enabled: value === 'true' }))}
-                            >
-                              <SelectTrigger className="border-2 border-gray-200">
-                                <SelectValue placeholder="Select option" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="true">Enabled</SelectItem>
-                                <SelectItem value="false">Disabled</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="default_loyalty_score" className="text-sm font-medium text-gray-700">Default Loyalty Score</Label>
-                            <Input
-                              id="default_loyalty_score"
-                              type="number"
-                              min="0"
-                              value={loyaltyConfig.default_loyalty_score}
-                              onChange={(e) => setLoyaltyConfig(prev => ({ ...prev, default_loyalty_score: parseInt(e.target.value) || 0 }))}
-                              className="border-2 border-gray-200"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Discount Rules Configuration */}
-                  {serviceConfig.discount_rules && (
-                    <>
-                      <div className="border-t border-gray-200 my-6" />
-                      <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 space-y-6">
-                        <h4 className="font-semibold text-lg text-gray-800">Discount Rules Configuration</h4>
-                        <div className="grid grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="default_discount" className="text-sm font-medium text-gray-700">Default Discount Percentage</Label>
-                            <Input
-                              id="default_discount"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={discountConfig.default_discount_percentage}
-                              onChange={(e) => setDiscountConfig(prev => ({ ...prev, default_discount_percentage: parseInt(e.target.value) || 0 }))}
-                              className="border-2 border-gray-200"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="max_discount" className="text-sm font-medium text-gray-700">Maximum Discount Percentage</Label>
-                            <Input
-                              id="max_discount"
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={discountConfig.max_discount_percentage}
-                              onChange={(e) => setDiscountConfig(prev => ({ ...prev, max_discount_percentage: parseInt(e.target.value) || 0 }))}
-                              className="border-2 border-gray-200"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
                 </div>
               )}
               

@@ -4,164 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, CheckCircle, XCircle, AlertCircle, ShoppingCart, MapPin, Briefcase, Package, Users, Heart, Info, MessageSquare, Video, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { BASE_URL_Retail, getSelectedBusinessData, getBaseUrlByCategory } from "@/config";
+import { BASE_URL_Retail, Config_URL, getSelectedBusinessData } from "@/config";
 import { BUSINESS_UPDATED_EVENT } from "@/components/common/BusinessSwitcher";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-
-// Add interfaces for service definitions
-export interface ServiceDefinition {
-  title: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>; // Properly type the Lucide icon component
-  category: string;
-  features: string[];
-  requiredTables: string[];
-  optionalTables: string[];
-  fields: Record<string, string[]>;
-  isResourceService?: boolean;
-}
-
-export interface ServiceDefinitions {
-  [key: string]: ServiceDefinition;
-}
-
-// Export serviceDefinitions
-export const serviceDefinitions: ServiceDefinitions = {
-  item_locator: {
-    title: "Item Locator",
-    description: "Smart inventory location tracking system for retail environments",
-    icon: MapPin,
-    category: "Core Service",
-    features: ["Real-time inventory tracking", "Location mapping", "Smart search algorithms"],
-    requiredTables: ["products_table"],
-    optionalTables: [],
-    fields: {
-      products_table: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"]
-    }
-  },
-  easy_checkout: {
-    title: "Easy Checkout",
-    description: "Streamlined checkout process with cart management and billing",
-    icon: ShoppingCart,
-    category: "Core Service",
-    features: ["Cart management", "Quick billing", "Discount calculations", "Payment processing"],
-    requiredTables: ["products_table", "cart_items_table", "bills_table"],
-    optionalTables: ["bill_items_table"],
-    fields: {
-      products_table: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"],
-      cart_items_table: ["user_id", "product_id", "quantity"],
-      bills_table: ["bill_number", "user_id", "total_price", "discounted_total", "bill_date"],
-      bill_items_table: ["bill_number", "product_id", "quantity", "total_price", "discounted_price"]
-    }
-  },
-  catalog: {
-    title: "Catalog",
-    description: "Comprehensive product catalog management system",
-    icon: Package,
-    category: "Core Service",
-    features: ["Product management", "Category organization", "Inventory tracking", "Pricing management"],
-    requiredTables: ["products_table"],
-    optionalTables: ["cart_items_table", "bills_table", "bill_items_table"],
-    fields: {
-      products_table: ["item_id", "item_name", "categories", "description", "price", "quantity", "image_path", "location"],
-      cart_items_table: ["user_id", "product_id", "quantity"],
-      bills_table: ["bill_number", "user_id", "total_price", "discounted_total", "bill_date"],
-      bill_items_table: ["bill_number", "product_id", "quantity", "total_price", "discounted_price"]
-    }
-  },
-  recruitment: {
-    title: "Recruitment",
-    description: "Job posting and candidate management platform",
-    icon: Briefcase,
-    category: "Core Service",
-    features: ["Job posting", "Candidate tracking", "Application management", "Interview scheduling"],
-    requiredTables: ["jobs_table"],
-    optionalTables: [],
-    fields: {
-      jobs_table: ["job_id", "job_title", "job_description"]
-    }
-  },
-  queue_manager: {
-    title: "Queue",
-    description: "Efficient customer queue management system",
-    icon: Users,
-    category: "Core Service",
-    features: ["Queue management", "Customer tracking", "Service scheduling", "Wait time estimation"],
-    requiredTables: ["queue_table"],
-    optionalTables: [],
-    fields: {
-      queue_table: ["queue_id", "customer_name", "service_type", "status", "wait_time", "priority"]
-    }
-  },
-  donation: {
-    title: "Donation",
-    description: "Donation management and tracking system",
-    icon: Heart,
-    category: "Core Service",
-    features: ["Donation tracking", "Donor management", "Campaign management", "Payment processing"],
-    requiredTables: ["donations_table"],
-    optionalTables: ["donors_table"],
-    fields: {
-      donations_table: ["donation_id", "donor_id", "amount", "date", "campaign_id", "status"],
-      donors_table: ["donor_id", "name", "email", "phone", "address"]
-    }
-  },
-  about_us: {
-    title: "About Us",
-    description: "Business information and profile management system",
-    icon: Info,
-    category: "Core Service",
-    features: ["Business profile", "Team management", "Content management", "Contact information"],
-    requiredTables: ["business_profile_table"],
-    optionalTables: ["team_members_table"],
-    fields: {
-      business_profile_table: ["profile_id", "business_name", "description", "mission", "vision", "contact_info"],
-      team_members_table: ["member_id", "name", "position", "bio", "image_path"]
-    }
-  },
-  zensevagpt: {
-    title: "Zensevagpt",
-    description: "AI-powered assistant for business operations",
-    icon: MessageSquare,
-    category: "Core Service",
-    features: ["AI chat", "Task automation", "Customer support", "Data analysis"],
-    requiredTables: ["chat_history_table"],
-    optionalTables: ["ai_config_table"],
-    fields: {
-      chat_history_table: ["chat_id", "user_id", "message", "timestamp", "response"],
-      ai_config_table: ["config_id", "model_settings", "customization"]
-    }
-  },
-  live_streaming: {
-    title: "Live Streaming",
-    description: "Content streaming and broadcasting platform",
-    icon: Video,
-    category: "Core Service",
-    features: ["Live streaming", "Content management", "Viewer analytics", "Stream scheduling"],
-    requiredTables: ["streams_table"],
-    optionalTables: ["stream_analytics_table"],
-    fields: {
-      streams_table: ["stream_id", "title", "description", "scheduled_time", "status", "viewer_count"],
-      stream_analytics_table: ["analytics_id", "stream_id", "viewer_metrics", "engagement_data"]
-    }
-  },
-  adaptive_learning: {
-    title: "Adaptive Learning",
-    description: "A personalized education system that dynamically adjusts learning content and pace based on individual learner performance and progress analytics",
-    icon: GraduationCap,
-    category: "Core Service",
-    features: ["Personalized learning paths", "Progress tracking", "Content adaptation", "Performance analytics"],
-    requiredTables: ["courses_table", "learner_progress_table"],
-    optionalTables: ["learning_materials_table"],
-    fields: {
-      courses_table: ["course_id", "title", "description", "difficulty_level", "prerequisites"],
-      learner_progress_table: ["progress_id", "learner_id", "course_id", "completion_status", "performance_metrics"],
-      learning_materials_table: ["material_id", "course_id", "content_type", "content_url", "difficulty_level"]
-    }
-  }
-};
+import { serviceDefinitions, ServiceDefinition } from "./serviceDefinitions";
 
 // Available services configuration per category
 const availableServicesByCategory = {
@@ -228,13 +76,11 @@ interface AddServiceDialogProps {
   onAddServices: (selectedServices: string[]) => void;
   currentCategory: string;
   selectedServices: string[];
+  availableServices: Array<{ name: string; icon: React.ComponentType<{ className?: string }>; description: string }>;
 }
 
-function AddServiceDialog({ open, onOpenChange, onAddServices, currentCategory, selectedServices }: AddServiceDialogProps) {
+function AddServiceDialog({ open, onOpenChange, onAddServices, currentCategory, selectedServices, availableServices }: AddServiceDialogProps) {
   const [tempSelectedServices, setTempSelectedServices] = useState<string[]>([]);
-
-  // Get available services for current category
-  const availableServices = availableServicesByCategory[currentCategory] || availableServicesByCategory.default;
 
   // Initialize temp selection when dialog opens
   useEffect(() => {
@@ -311,6 +157,11 @@ function AddServiceDialog({ open, onOpenChange, onAddServices, currentCategory, 
   );
 }
 
+// Add this helper function at the top of the file, after the imports
+const convertServiceNameToUrl = (serviceName: string): string => {
+  return serviceName.toLowerCase().replace(/\s+/g, '_');
+};
+
 export function ServicesTable() {
   const [config, setConfig] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -319,6 +170,7 @@ export function ServicesTable() {
   const [selectedBusiness, setSelectedBusiness] = useState(getSelectedBusinessData());
   const [selectedServicesByCategory, setSelectedServicesByCategory] = useState<Record<string, string[]>>({});
   const navigate = useNavigate();
+  const [availableServices, setAvailableServices] = useState<Array<{ name: string; icon: React.ComponentType<{ className?: string }>; description: string }>>([]);
 
   // Get current business category
   const getCurrentCategory = () => {
@@ -400,7 +252,7 @@ export function ServicesTable() {
       const response = await fetch(`${BASE_URL_Retail}/get_config`);
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
+        // setConfig(data);
       } else {
         throw new Error('Failed to load configuration');
       }
@@ -414,20 +266,8 @@ export function ServicesTable() {
     const service = config[serviceKey];
     if (!service) return 'inactive';
     
-    if (serviceDefinitions[serviceKey]?.isResourceService) {
-      return service.DIRS ? 'active' : 'error';
-    }
-    
     if (!service.DB_CONNECTION) return 'error';
     if (!service.TABLE_MAPPING) return 'pending';
-    
-    const definition = serviceDefinitions[serviceKey];
-    if (definition) {
-      const hasRequiredTables = definition.requiredTables.every(
-        table => service.TABLE_MAPPING[table]
-      );
-      return hasRequiredTables ? 'active' : 'pending';
-    }
     
     return 'active';
   };
@@ -471,20 +311,43 @@ export function ServicesTable() {
   const currentCategory = getCurrentCategory();
   const currentSelectedServices = getSelectedServicesForCurrentCategory();
 
+  // Add useEffect to fetch services
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await fetch(`${Config_URL}/services`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch services');
+        }
+        const services = await response.json();
+        // Map the services to include icons and descriptions
+        const mappedServices = services.map((serviceName: string) => {
+          // Find matching service definition for icon and description
+          const serviceKey = Object.keys(serviceDefinitions).find(key => 
+            serviceDefinitions[key].title.toLowerCase() === serviceName.toLowerCase()
+          );
+          
+          return {
+            name: serviceName,
+            icon: serviceKey ? serviceDefinitions[serviceKey].icon : Info,
+            description: serviceKey ? serviceDefinitions[serviceKey].description : 'Service description not available'
+          };
+        });
+        
+        setAvailableServices(mappedServices);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        showNotification("Error", "Failed to fetch services: " + error.message, "error");
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="space-y-6">
-          {/* Header with category info */}
-          {/* <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Services for {currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1)} Business
-            </h1>
-            <p className="text-gray-600 mt-2">
-              {currentSelectedServices.length} services selected for this category
-            </p>
-          </div> */}
-
           {/* Search Bar and Add Service Button */}
           <div className="flex items-center space-x-4">
             <div className="relative flex-1">
@@ -553,7 +416,7 @@ export function ServicesTable() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                        {service.description}
+                        {/* {service.description} */}
                       </p>
                       
                       <div className="space-y-3">
@@ -562,26 +425,12 @@ export function ServicesTable() {
                             size="sm"
                             variant={isConfigured ? "outline" : "default"}
                             onClick={() => {
-                              if (serviceKey === 'item_locator') {
-                                navigate('/services/itemLocator');
-                              }  
-                              else if (serviceKey === 'easy_checkout') {
-                                navigate('/services/easyCheckout');
-                              }
-                              else if (serviceKey === 'catalog') {
-                                navigate('/services/catalog');
-                              }
-                              else if (serviceKey === 'recruitment') {
-                                navigate('/services/recruitment');
-                              }
-                              else if (serviceKey === 'queue_manager') {
-                                navigate('/services/queue');
-                              }
-                              else if (serviceKey === 'adaptive_learning') {
+                              if (serviceKey === 'adaptive_learning') {
                                 navigate('/services/ClassTable');
-                              }
-                              else {
-                                navigate('/services/configure', { state: { serviceKey } });
+                              } else {
+                                const serviceName = service.title;
+                                const urlFriendlyName = convertServiceNameToUrl(serviceName);
+                                navigate(`/services/configure/${urlFriendlyName}`);
                               }
                             }}
                             className="flex-1"
@@ -606,6 +455,7 @@ export function ServicesTable() {
         onAddServices={handleAddServices}
         currentCategory={currentCategory}
         selectedServices={currentSelectedServices}
+        availableServices={availableServices}
       />
 
       {/* Notification System */}

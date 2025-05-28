@@ -14,19 +14,21 @@ import { AddClassroomDialog } from "@/components/Education/AddClassroomDialog";
 import { toast } from "sonner";
 import { PageLayout } from "../common/PageLayout";
 import { useNavigate } from "react-router-dom";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
-interface User {
+export interface User {
   id: number;
   name: string;
   email: string;
   role: "teacher" | "student";
 }
 
-interface Classroom {
+export interface Classroom {
   id: number;
   name: string;
   description: string;
   subject: string;
+  grade: string;
   capacity: number;
   teacherIds: number[];
   studentIds: number[];
@@ -42,6 +44,7 @@ const mockClassrooms: Classroom[] = [
     name: "Advanced Mathematics",
     description: "Advanced calculus and algebra concepts",
     subject: "Mathematics",
+    grade: "High School",
     capacity: 30,
     teacherIds: [1, 2],
     studentIds: [4, 5, 6, 7, 8],
@@ -54,6 +57,7 @@ const mockClassrooms: Classroom[] = [
     name: "Biology Lab",
     description: "Hands-on biology experiments and research",
     subject: "Biology",
+    grade: "Middle School",
     capacity: 25,
     teacherIds: [3],
     studentIds: [4, 5, 6],
@@ -66,6 +70,7 @@ const mockClassrooms: Classroom[] = [
     name: "English Literature",
     description: "Classic and contemporary literature analysis",
     subject: "English",
+    grade: "High School",
     capacity: 35,
     teacherIds: [1],
     studentIds: [4, 5, 6, 7],
@@ -78,6 +83,7 @@ const mockClassrooms: Classroom[] = [
     name: "Computer Science Fundamentals",
     description: "Introduction to programming and algorithms",
     subject: "Computer Science",
+    grade: "Middle School",
     capacity: 28,
     teacherIds: [2, 3],
     studentIds: [4, 5, 6, 7, 8],
@@ -90,6 +96,7 @@ const mockClassrooms: Classroom[] = [
     name: "World History",
     description: "Global historical events and civilizations",
     subject: "History",
+    grade: "High School",
     capacity: 32,
     teacherIds: [1],
     studentIds: [4, 5],
@@ -194,206 +201,249 @@ export function ClassTable() {
 
   return (
     <PageLayout title="Class Management">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/services')}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Services</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add New
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                {uniqueSubjects.map(subject => (
-                  <SelectItem key={subject} value={subject}>{subject}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline" onClick={clearFilters}>
-              <Filter className="h-4 w-4 mr-2" />
-              Clear
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+      <div className="relative mx-auto max-w-7xl">
+        <Card className="shadow-lg border-2 border-gray-100">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+            <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm text-gray-600">Total Classes</p>
-                <p className="text-2xl font-bold">{classrooms.length}</p>
+                <CardTitle className="text-2xl font-bold text-gray-800">Class Management</CardTitle>
+                <CardDescription className="text-gray-600 mt-1">
+                  Manage and organize your educational classes efficiently
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/services')}
+                  className="flex items-center gap-2 hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to Services</span>
+                </Button>
+                <Button 
+                  onClick={() => setIsAddDialogOpen(true)}
+                  className="bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Class
+                </Button>
               </div>
             </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm text-gray-600">Active Classes</p>
-                <p className="text-2xl font-bold">{classrooms.filter(c => c.status === "active").length}</p>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            {/* Filters and Search */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search classes..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 border-2 border-gray-200 rounded-lg"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                  <SelectTrigger className="w-40 border-2 border-gray-200">
+                    <SelectValue placeholder="Subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subjects</SelectItem>
+                    {uniqueSubjects.map(subject => (
+                      <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40 border-2 border-gray-200">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button 
+                  variant="outline" 
+                  onClick={clearFilters}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Clear
+                </Button>
               </div>
             </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-sm text-gray-600">Total Students</p>
-                <p className="text-2xl font-bold">{classrooms.reduce((sum, c) => sum + c.studentIds.length, 0)}</p>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total Classes</p>
+                    <p className="text-2xl font-bold text-gray-800">{classrooms.length}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-50 rounded-lg">
+                    <UserCheck className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Active Classes</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {classrooms.filter(c => c.status === "active").length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-50 rounded-lg">
+                    <Users className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total Students</p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {classrooms.reduce((sum, c) => sum + c.studentIds.length, 0)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Results count */}
-        <div className="text-sm text-gray-600">
-          Showing {filteredClassrooms.length} of {classrooms.length} classes
-        </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Subject</TableHead>
-                <TableHead>Teachers</TableHead>
-                <TableHead>Students</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClassrooms.map((classroom) => (
-                <TableRow key={classroom.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{classroom.name}</div>
-                      <div className="text-sm text-gray-500 truncate max-w-48">
-                        {classroom.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{classroom.subject}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {getTeacherNames(classroom.teacherIds).map((name, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span>{classroom.studentIds.length}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(classroom.status)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {new Date(classroom.createdAt).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleView(classroom)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleStatusChange(classroom.id, "active")}>
-                          Mark as Active
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(classroom.id, "inactive")}>
-                          Mark as Inactive
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleStatusChange(classroom.id, "archived")}>
-                          Archive
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(classroom.id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {filteredClassrooms.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No classes found matching your criteria.
+            {/* Results count */}
+            <div className="text-sm text-gray-600">
+              Showing {filteredClassrooms.length} of {classrooms.length} classes
             </div>
-          )}
-        </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold text-gray-700">Class Name</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Subject</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Teachers</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Students</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                    <TableHead className="font-semibold text-gray-700">Created</TableHead>
+                    <TableHead className="text-right font-semibold text-gray-700">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredClassrooms.map((classroom) => (
+                    <TableRow key={classroom.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-gray-800">{classroom.name}</div>
+                          <div className="text-sm text-gray-500 truncate max-w-48">
+                            {classroom.description}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-gray-800">{classroom.subject}</div>
+                          <div className="text-sm text-gray-500">{classroom.grade}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {getTeacherNames(classroom.teacherIds).map((name, index) => (
+                            <Badge 
+                              key={index} 
+                              variant="outline" 
+                              className="text-xs bg-gray-50 text-gray-700 border-gray-200"
+                            >
+                              {name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          <span className="text-gray-700">{classroom.studentIds.length}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(classroom.status)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {new Date(classroom.createdAt).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-100">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem 
+                              onClick={() => handleView(classroom)}
+                              className="text-gray-700 hover:bg-gray-50"
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(classroom.id, "active")}
+                              className="text-gray-700 hover:bg-gray-50"
+                            >
+                              Mark as Active
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(classroom.id, "inactive")}
+                              className="text-gray-700 hover:bg-gray-50"
+                            >
+                              Mark as Inactive
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleStatusChange(classroom.id, "archived")}
+                              className="text-gray-700 hover:bg-gray-50"
+                            >
+                              Archive
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(classroom.id)}
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {filteredClassrooms.length === 0 && (
+                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-b-xl">
+                  No classes found matching your criteria.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Add/Edit Dialog */}
         <AddClassroomDialog
@@ -402,7 +452,7 @@ export function ClassTable() {
             setIsAddDialogOpen(false);
             setEditingClassroom(null);
           }}
-          title={editingClassroom ? "Edit" : "Add New"}
+          title={editingClassroom ? "Edit Class" : "Add New Class"}
           classroom={editingClassroom || undefined}
           availableUsers={mockUsers}
         />

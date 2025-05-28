@@ -19,12 +19,7 @@ import Settings from "./pages/Settings";
 import PaymentAndBilling from "./pages/PaymentAndBilling";
 import Clients from "./pages/Clients";
 import ClientProfile from "./pages/ClientProfile";
-import { ServiceConfigurationWizard } from "./components/services/ServiceConfigurationWizard";
-import { ItemLocatorServiceConfigurationWizard } from "./components/services/ItemLocatorServiceConfigurationWizard";
-import { EasyCheckoutServiceConfigurationWizard } from "./components/services/EasyCheckoutServiceConfigurationWizard";
-import { CatalogServiceConfigurationWizard } from "./components/services/CatalogServiceConfigurationWizard";
-import { RecruitmentServiceConfigurationWizard } from "./components/services/RecruitmentServiceConfigurationWizard";
-import { QueueServiceConfigurationWizard } from "./components/services/QueueServiceConfigurationWizard";
+import { GenericServiceConfigurationWizard } from "./components/services/GenericServiceConfigurationWizard";
 import { ClassTable } from "./components/Education/ClassTable";
 
 const queryClient = new QueryClient();
@@ -40,13 +35,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/services" element={<Services />} />
-          {/* <Route path="/services/new" element={<NewService />} /> */}
-          <Route path="/services/configure" element={<ServiceConfigurationWizard />} />
-          <Route path="/services/itemLocator" element={<ItemLocatorServiceConfigurationWizard />} />
-          <Route path="/services/easyCheckout" element={<EasyCheckoutServiceConfigurationWizard />} />
-          <Route path="/services/catalog" element={<CatalogServiceConfigurationWizard />} />
-          <Route path="/services/recruitment" element={<RecruitmentServiceConfigurationWizard />} />
-          <Route path="/services/queue" element={<QueueServiceConfigurationWizard />} />
+          <Route path="/services/configure/:serviceType" element={<GenericServiceConfigurationWizard />} />
           <Route path="/services/ClassTable" element={<ClassTable />} />
 
           <Route path="/roles" element={<Roles />} />

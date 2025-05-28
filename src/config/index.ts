@@ -1,12 +1,15 @@
 // API Configuration
 export const BASE_URL = 'http://127.0.0.1:8087';
-export const TestConnection_URL = 'http://127.0.0.1:5000';
-export const BASE_URL_Retail = 'http://127.0.0.1:8091';
+export const TestConnection_URL = 'http://127.0.0.1:8087';
+export const BASE_URL_Retail = 'http://127.0.0.1:8090';
+// export const BASE_URL_Retail = 'http://127.0.0.1:8091';
 export const BASE_URL_Bank = 'http://127.0.0.1:8093';
 export const BASE_URL_Salon = 'http://127.0.0.1:8094';
 export const BASE_URL_Religious = 'http://127.0.0.1:8092';
 export const BASE_URL_Hospital = 'http://127.0.0.1:8095';
 
+// export const Config_URL = "http://localhost:5000";
+export const Config_URL = "https://ctd7ueemxrmxuxwxnod4a3bpca0sqwof.lambda-url.ap-south-1.on.aws";
 
 // Function to get user data from localStorage
 export const getUserData = () => {

@@ -156,9 +156,9 @@ export function AddClassroomDialog({
               <Users className="h-5 w-5" />
               {title}
             </DialogTitle>
-            <DialogDescription>
+            {/* <DialogDescription>
               Fill out the details below to {classroom ? "update" : "create"} a classroom and assign teachers and students.
-            </DialogDescription>
+            </DialogDescription> */}
           </DialogHeader>
 
           <div className="grid gap-6 py-6">
@@ -204,14 +204,13 @@ export function AddClassroomDialog({
             </div>
 
             {/* Teacher Assignment */}
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-blue-600" />
                 <Label className="text-base font-semibold">Assign Teachers *</Label>
                 <span className="text-sm text-gray-500">({selectedTeachers.length} selected)</span>
               </div>
 
-              {/* Selected Teachers */}
               {selectedTeachers.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-sm text-gray-600">Selected Teachers:</Label>
@@ -229,7 +228,6 @@ export function AddClassroomDialog({
                 </div>
               )}
 
-              {/* Teacher Search and Selection */}
               <div className="space-y-2">
                 <Input 
                   placeholder="Search teachers..." 
@@ -252,7 +250,7 @@ export function AddClassroomDialog({
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Student Assignment */}
             <div className="space-y-4">
