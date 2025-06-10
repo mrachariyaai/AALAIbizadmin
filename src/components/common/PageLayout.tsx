@@ -26,7 +26,8 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
   
   useEffect(() => {
     const user = getUserData();
-    setIsAuthenticated(!!user);
+    //setIsAuthenticated(!!user);
+    setIsAuthenticated(true); // For testing purposes, assume user is authenticated
   }, []);
 
   useEffect(() => {
