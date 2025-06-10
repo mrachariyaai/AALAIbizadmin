@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/common/Logo";
-import { BASE_URL } from "@/config";
 import { Phone, CheckCircle, QrCode, RefreshCw, Smartphone } from "lucide-react";
 import { isValidPhoneNumber } from "@/utils/authUtils";
 import { signIn, confirmSignIn } from 'aws-amplify/auth';
@@ -39,6 +38,7 @@ export function LoginForm() {
   const [selectedCountry, setSelectedCountry] = useState("IN");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpNextStep, setOtpNextStep] = useState('');

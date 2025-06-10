@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,10 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppRoutes } from "./navigation/Routes";
 import { Amplify } from "aws-amplify";
 import awsConfig from "./config/aws-config";
-
 Amplify.configure(awsConfig)
 
-console.log("AWS Amplify configured with User Pool ID:", import.meta.env.VITE_USER_POOL_ID);
 const queryClient = new QueryClient();
 
 const App = () => (
