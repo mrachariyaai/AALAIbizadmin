@@ -8,10 +8,10 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "@/components/common/Logo";
 import { Phone, CheckCircle, QrCode, RefreshCw, Smartphone } from "lucide-react";
 import { isValidPhoneNumber } from "@/utils/authUtils";
-import { signIn, confirmSignIn } from 'aws-amplify/auth';
-import { set } from "react-hook-form";
+import { signIn, confirmSignIn, getCurrentUser } from 'aws-amplify/auth';
 import QRCode from "react-qr-code";
-import { checkQRScanStatus, fetchQRSessionId } from "@/api/auth";
+import { checkQRScanStatus, completeQRLogin, fetchQRSessionId } from "@/api/auth";
+import { Hub } from "aws-amplify/utils";
 
 // Country codes with flags and dial codes
 const COUNTRIES = [
@@ -34,7 +34,7 @@ const COUNTRIES = [
 
 export function LoginForm() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [loginType, setLoginType] = useState<'phone' | 'qr'>('phone'); // New state for login type
+  const [loginType, setLoginType] = useState<'phone' | 'qr'>('phone');
   const [selectedCountry, setSelectedCountry] = useState("IN");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
@@ -49,6 +49,7 @@ export function LoginForm() {
   const [qrSessionId, setQrSessionId] = useState("");
   const [isQrLoading, setIsQrLoading] = useState(false);
   const [qrPollingInterval, setQrPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [qrExpiryTimeout, setQrExpiryTimeout] = useState<NodeJS.Timeout | null>(null); // New state for timeout
   const [qrExpired, setQrExpired] = useState(false);
   
   const { toast } = useToast();
@@ -57,18 +58,12 @@ export function LoginForm() {
   const selectedCountryData = COUNTRIES.find(country => country.code === selectedCountry);
   const fullPhoneNumber = `${selectedCountryData?.dialCode}${phoneNumber}`;
 
-  // Start cooldown timer for resend OTP
-  const startResendCooldown = () => {
-    setResendCooldown(30);
-    const timer = setInterval(() => {
-      setResendCooldown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  // Clear QR expiry timeout
+  const clearQRExpiryTimeout = () => {
+    if (qrExpiryTimeout) {
+      clearTimeout(qrExpiryTimeout);
+      setQrExpiryTimeout(null);
+    }
   };
 
   // Generate QR Code for login
@@ -76,10 +71,13 @@ export function LoginForm() {
     setIsQrLoading(true);
     setQrExpired(false);
     
+    // Clear any existing expiry timeout
+    clearQRExpiryTimeout();
+    
     try {
       // Get a sessionid from backend
-      const sessionId:string = await fetchQRSessionId()
-      if( sessionId === "" ) {
+      const sessionId: string = await fetchQRSessionId()
+      if (sessionId === "") {
         throw new Error("Error generating QR Code")
       }
       setQrSessionId(sessionId);
@@ -94,14 +92,20 @@ export function LoginForm() {
       
       setQrCode(qrData);
       
+      // Stop previous polling if any
+      stopQRPolling();
+      
       // Start polling for QR code scan status
       startQRPolling(sessionId);
       
-      // Set QR code expiry (5 minutes)
-      setTimeout(() => {
+      // Set QR code expiry (5 minutes) and store the timeout reference
+      const timeout = setTimeout(() => {
         setQrExpired(true);
         stopQRPolling();
+        setQrExpiryTimeout(null); // Clear the reference
       }, 5 * 60 * 1000);
+      
+      setQrExpiryTimeout(timeout);
       
     } catch (error) {
       console.error("Error generating QR code:", error);
@@ -119,17 +123,37 @@ export function LoginForm() {
   const startQRPolling = async (sessionId: string) => {
     const interval = setInterval(async () => {
       try {
-        // Ccheck the backend for scan status
+        // Check the backend for scan status
         const data = await checkQRScanStatus(sessionId);
         
-        if (data.status === 'scanned' && data.authenticated) {
-          // QR code scanned and user authenticated
+        // If the QR code is linked a user, stop polling
+        if (data.status === 'linked') {
+          
+          // Stop polling and clear expiry timeout
           stopQRPolling();
-          toast({
-            title: "Login Successful",
-            description: "You have been logged in via QR code",
-          });
-          navigate("/dashboard");
+          clearQRExpiryTimeout();
+          setQrPollingInterval(null);
+
+          // Complete the QR code login process
+          const res = await completeQRLogin(sessionId);
+          if (res.status === 'success') {
+            toast({
+              title: "Login Successful",
+              description: "You have been logged in via QR code",
+            });
+            
+            Hub.dispatch('auth', { event: 'signIn' }); // manually notify
+            
+            const user = await getCurrentUser();
+            console.log("User logged in via QR code:", user);
+          }
+          else {
+            toast({
+              title: "Login Failed",
+              description: "Failed to complete QR code login. Please try again.",
+              variant: "destructive",
+            });
+          }
         }
       } catch (error) {
         console.error("QR polling error:", error);
@@ -147,10 +171,16 @@ export function LoginForm() {
     }
   };
 
+  // Cleanup function for all timers and intervals
+  const cleanupQRResources = () => {
+    stopQRPolling();
+    clearQRExpiryTimeout();
+  };
+
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
-      stopQRPolling();
+      cleanupQRResources();
     };
   }, []);
 
@@ -159,8 +189,8 @@ export function LoginForm() {
     if (loginType === 'qr') {
       generateQRCode();
     } else {
-      // Clean up QR polling when switching away from QR mode
-      stopQRPolling();
+      // Clean up QR resources when switching away from QR mode
+      cleanupQRResources();
     }
   }, [loginType]);
 
@@ -197,9 +227,9 @@ export function LoginForm() {
       console.error("Error sending OTP:", error.message);
       
       // Check if `NotAuthorizedException` is included in the error message
-      let errorDescription =  "Something went wrong. Please try again."
-      if( error.message.includes('Incorrect username or password') ) {
-        errorDescription = "Invalid phone numer. Create an AALAI account in mobile app to use this feature";
+      let errorDescription = "Something went wrong. Please try again."
+      if (error.message.includes('Incorrect username or password')) {
+        errorDescription = "Invalid phone number. Create an AALAI account in mobile app to use this feature";
       }
       toast({
         title: "Error",
@@ -212,6 +242,8 @@ export function LoginForm() {
   };
 
   const verifyOTP = async () => {
+
+
     if (!otp.trim()) {
       toast({
         title: "OTP required",
@@ -224,13 +256,19 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       
-      if( otpNextStep === 'CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE') {
+      if (otpNextStep === 'CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE') {
 
         // Send OTP to backend for verification
         const response = await confirmSignIn({
           challengeResponse: otp,
         });
-        console.log("OTP verified successfully:", response);
+
+        const user = await getCurrentUser();
+        toast({
+          title: "Login Successful",
+          description: "You have been logged in successfully",
+        });
+
         navigate("/dashboard");
 
       } else {

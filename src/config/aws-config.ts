@@ -12,6 +12,7 @@ interface AmplifyConfig {
   };
 }
 
+
 const awsConfig: AmplifyConfig = {
   Auth: {  
     Cognito: { 
@@ -21,7 +22,7 @@ const awsConfig: AmplifyConfig = {
         phone: true, // Enable phone number login
       },
       authenticationFlowType: 'CUSTOM_AUTH', // Required for OTP flows
-  }
+    }
   }
 };
 

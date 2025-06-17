@@ -16,31 +16,49 @@ import PaymentAndBilling from "../pages/PaymentAndBilling";
 import Clients from "../pages/Clients";
 import ClientProfile from "../pages/ClientProfile";
 import { ServiceConfigurationWizard } from "../components/services/ServiceConfigurationWizard";
+import { FC } from "react";
+import { useAuth } from "@/auth/AuthProvider";
+import AlreadyAuthRedirect from "@/auth/AlreadyAuthRedirect";
+import RequireAuth from "@/auth/RequireAuth";
 
-
-export const AppRoutes = () => {
+const AuthRoutes = () => {
     return (
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/services" element={<Services />} />
-          {/* <Route path="/services/new" element={<NewService />} /> */}
-          <Route path="/services/configure" element={<ServiceConfigurationWizard />} />
-          {/* <Route path="/services/itemLocator" element={<ItemLocatorServiceConfigurationWizard />} />
-          <Route path="/services/easyCheckout" element={<EasyCheckoutServiceConfigurationWizard />} /> */}
-
-          <Route path="/roles" element={<Roles />} />
-          <Route path="/roles/new" element={<NewRole />} />
-          <Route path="/stakeholders" element={<Stakeholders />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/monitoring" element={<Monitoring />} />
-          <Route path="/audit-logs" element={<AuditLogs />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/payment-billing" element={<PaymentAndBilling />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/clients/:id" element={<ClientProfile />} />
-          <Route path="*" element={<NotFound />} />
+            
         </Routes>
-    )
+    );
+}
+
+const AppRoutes = () => {
+    return (
+        <Routes>
+            
+        </Routes>
+    );  
+}
+export const Navigation:FC = () => {
+    
+  return (
+    <Routes>
+      {/* Unauthenticated routes */}
+      <Route path="/" element={<AlreadyAuthRedirect><Index /></AlreadyAuthRedirect>} />
+      <Route path="/login" element={<AlreadyAuthRedirect><Login /></AlreadyAuthRedirect>} />
+
+      {/* Protected routes */}
+      <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+      <Route path="/services" element={<RequireAuth><Services /></RequireAuth>} />
+      <Route path="/services/new" element={<RequireAuth><NewService /></RequireAuth>} />
+      <Route path="/services/configure" element={<RequireAuth><ServiceConfigurationWizard /></RequireAuth>} />
+      <Route path="/roles" element={<RequireAuth><Roles /></RequireAuth>} />
+      <Route path="/roles/new" element={<RequireAuth><NewRole /></RequireAuth>} />
+      <Route path="/stakeholders" element={<RequireAuth><Stakeholders /></RequireAuth>} />
+      <Route path="/employees" element={<RequireAuth><Employees /></RequireAuth>} />
+      <Route path="/monitoring" element={<RequireAuth><Monitoring /></RequireAuth>} />
+      <Route path="/audit-logs" element={<RequireAuth><AuditLogs /></RequireAuth>} />
+      <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+      <Route path="/payment-billing" element={<RequireAuth><PaymentAndBilling /></RequireAuth>} />
+      <Route path="/clients" element={<RequireAuth><Clients /></RequireAuth>} />
+      <Route path="/clients/:id" element={<RequireAuth><ClientProfile /></RequireAuth>} />
+    </Routes>
+  )
 }

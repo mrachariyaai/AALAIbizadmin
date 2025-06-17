@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
   CreditCard,
   Building
 } from "lucide-react";
+import { signOut } from "@aws-amplify/auth";
 
 interface SidebarProps {
   className?: string;
@@ -26,13 +27,12 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [ user, setUser ] = useState({name:'user', role:'role'});
+
   const navigate = useNavigate();
-  
   const userString = localStorage.getItem("aalaiUser");
-  const user = userString ? JSON.parse(userString) : null;
-  
-  const handleLogout = () => {
-    localStorage.removeItem("aalaiUser");
+  const handleLogout = async () => {
+    await signOut()
     navigate("/login");
   };
   
@@ -79,41 +79,28 @@ export function Sidebar({ className }: SidebarProps) {
         </nav>
       </div>
       
-      {user ? (
-        <div className={cn(
-          "border-t p-4",
-          collapsed ? "text-center" : ""
-        )}>
-          <div className="flex items-center justify-between mb-2">
-            {!collapsed && (
-              <div>
-                <div className="font-medium">{user.name}</div>
-                <div className="text-xs text-muted-foreground">{user.role}</div>
-              </div>
-            )}
-            <Button 
-              variant="ghost" 
-              size={collapsed ? "icon" : "sm"} 
-              onClick={handleLogout}
-              className={cn(collapsed && "mx-auto")}
-            >
-              <LogIn className="h-4 w-4 mr-1" />
-              {!collapsed && <span>Logout</span>}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <div className="border-t p-4">
+      <div className={cn(
+        "border-t p-4",
+        collapsed ? "text-center" : ""
+      )}>
+        <div className="flex items-center justify-between mb-2">
+          {!collapsed && (
+            <div>
+              <div className="font-medium">{user.name}</div>
+              <div className="text-xs text-muted-foreground">{user.role}</div>
+            </div>
+          )}
           <Button 
-            variant="outline" 
-            className={cn("w-full", collapsed && "w-fit mx-auto p-2")} 
-            onClick={() => navigate("/login")}
+            variant="ghost" 
+            size={collapsed ? "icon" : "sm"} 
+            onClick={handleLogout}
+            className={cn(collapsed && "mx-auto")}
           >
             <LogIn className="h-4 w-4 mr-1" />
-            {!collapsed && <span>Login</span>}
+            {!collapsed && <span>Logout</span>}
           </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
