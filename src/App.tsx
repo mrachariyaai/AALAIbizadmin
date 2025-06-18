@@ -4,9 +4,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AppRoutes } from "./navigation/Routes";
+import { Navigation } from "./navigation/Routes";
 import { Amplify } from "aws-amplify";
 import awsConfig from "./config/aws-config";
+import { AuthProvider } from "./auth/AuthProvider";
+
 Amplify.configure(awsConfig)
 
 const queryClient = new QueryClient();
@@ -17,7 +19,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppRoutes />
+        <AuthProvider>
+          <Navigation />
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

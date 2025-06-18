@@ -11,16 +11,8 @@ interface PageLayoutProps {
 }
 
 export function PageLayout({ children, requiresAuth = true, title }: PageLayoutProps) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
-  const navigate = useNavigate();
   
-  useEffect(() => {
-    const user = getUserData();
-    //setIsAuthenticated(!!user);
-    setIsAuthenticated(true); // For testing purposes, assume user is authenticated
-  }, []);
-
   // Function to handle business submission/addition
   const handleBusinessAdded = (newBusiness: {
     id: string;
@@ -58,16 +50,7 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
     // Dispatch custom event to notify BusinessSwitcher to update
     window.dispatchEvent(new Event(BUSINESS_UPDATED_EVENT));
   };
-  
-  // Show loading state while checking authentication
-  if (isAuthenticated === null) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
-  
-  // Redirect to login if authentication is required but user is not authenticated
-  if (requiresAuth && !isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+
 
   return (
     <div className="flex min-h-screen">
@@ -76,17 +59,17 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
         {title && (
           <div className="bg-white p-4 border-b shadow-sm flex justify-between items-center">
             <div className="flex items-center gap-4">
-              {isAuthenticated && <BusinessSwitcher />}
+              <BusinessSwitcher />
               {/* <h1 className="text-2xl font-semibold text-gray-800">{title}</h1> */}
             </div>
-            {isAuthenticated && (
+            
               <button 
                 onClick={() => setIsAddBusinessOpen(true)} 
                 className="bg-primary text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary/90 flex items-center gap-1"
               >
                 <span className="text-lg">+</span> Add Business
               </button>
-            )}
+        
           </div>
         )}
         <div className="p-6">
