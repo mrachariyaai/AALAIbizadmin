@@ -141,9 +141,10 @@ export function LoginForm() {
               title: "Login Successful",
               description: "You have been logged in via QR code",
             });
-            
-            Hub.dispatch('auth', { event: 'signIn' }); // manually notify
-            
+
+            // manually notify about signin
+            Hub.dispatch('auth', { event: 'signedIn' });
+
             const user = await getCurrentUser();
             console.log("User logged in via QR code:", user);
           }
