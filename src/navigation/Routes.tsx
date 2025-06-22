@@ -17,7 +17,7 @@ import Clients from "../pages/Clients";
 import ClientProfile from "../pages/ClientProfile";
 import { ServiceConfigurationWizard } from "../components/services/ServiceConfigurationWizard";
 import { FC } from "react";
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/contexts/AuthProvider";
 import AlreadyAuthRedirect from "@/auth/AlreadyAuthRedirect";
 import RequireAuth from "@/auth/RequireAuth";
 

@@ -7,7 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navigation } from "./navigation/Routes";
 import { Amplify } from "aws-amplify";
 import awsConfig from "./config/aws-config";
-import { AuthProvider } from "./auth/AuthProvider";
+import { AuthProvider } from "./contexts/AuthProvider";
+import { BusinessProvider } from "./contexts/BusinessContext";
 
 Amplify.configure(awsConfig)
 
@@ -20,7 +21,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Navigation />
+          <BusinessProvider>
+            <Navigation />
+          </BusinessProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

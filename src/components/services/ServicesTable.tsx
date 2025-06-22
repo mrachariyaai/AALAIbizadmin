@@ -4,6 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Database, Edit, Settings, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { listServices } from "@/api/business";
+import { useSelectedBusinessId } from "@/contexts/BusinessContext";
 
 interface Service {
   id: number;
@@ -15,7 +18,7 @@ interface Service {
   databaseType: string;
 }
 
-const services: Service[] = [
+const services1: Service[] = [
   {
     id: 1,
     name: "Item Locator",
@@ -27,7 +30,7 @@ const services: Service[] = [
   },
   {
     id: 2,
-    name: "Easy Checkout",
+    name: "Queue",
     type: "Core Service",
     status: "active",
     lastUpdated: "2025-05-03",
@@ -64,8 +67,28 @@ const services: Service[] = [
 ];
 
 export function ServicesTable() {
+
   const navigate = useNavigate();
+  const [services, setServices] = useState<Service[]>([]);
+
+  const businessId = useSelectedBusinessId();
   
+  useEffect(() => {
+
+
+    // Fetch services from API
+    listServices(businessId)
+      .then((data) => {
+        console.log("Fetched services: ", data);
+        setServices(services1);
+      })
+      .catch((error) => {
+        console.error("Error fetching services: ", error);
+        // Fallback to static data if API fails
+        setServices(services1);
+      }); 
+  }, [])
+
   const getStatusBadge = (status: Service["status"]) => {
     switch(status) {
       case "active":

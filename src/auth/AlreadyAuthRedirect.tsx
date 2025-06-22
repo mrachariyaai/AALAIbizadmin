@@ -1,5 +1,5 @@
 // components/AlreadyAuthRedirect.tsx
-import { useAuth } from "@/auth/AuthProvider";
+import { useAuth } from "@/contexts/AuthProvider";
 import { Navigate } from "react-router-dom";
 
 const AlreadyAuthRedirect = ({ children }: { children: JSX.Element }) => {
