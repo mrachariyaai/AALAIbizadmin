@@ -1,20 +1,43 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { listAllServices } from "@/api/business";
 
 export function ServiceConfigurationWizard() {
   const [step, setStep] = useState(1);
   const [connectionString, setConnectionString] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [selectedTable, setSelectedTable] = useState("");
+  const [selectedService, setSelectedService] = useState("");
+  const [services, setServices] = useState([]);
+
   const { toast } = useToast();
   
+  useEffect(() => {
+    // Fetch all services
+    listAllServices()
+      .then(data => {
+        console.log("Fetched services: ", data);
+        setServices(data);
+        // Auto-select first service if available
+        if (data.length > 0) {
+          setSelectedService(data[0].service_id);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching services: ", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch services. Please try again later.",
+          variant: "destructive",
+        });
+      }); 
+  }, []);
+
   // Mock data for demo
   const tables = ["products", "users", "cart", "orders", "categories"];
   const columns = ["id", "name", "description", "price", "quantity", "category_id", "image_path", "location"];
@@ -77,6 +100,119 @@ export function ServiceConfigurationWizard() {
     });
   };
 
+  const getSelectedServiceName = () => {
+    const service = services.find(s => s.service_id === selectedService);
+    return service ? service.service_name : "Service";
+  };
+
+  const renderServiceConfiguration = () => {
+    const service = services.find(s => s.service_id === selectedService);
+    if (!service) return null;
+
+    return (
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="connectionString">Connection String</Label>
+          <div className="flex space-x-2 mt-1.5">
+            <Input 
+              id="connectionString"
+              placeholder="Enter connection string..."
+              value={connectionString}
+              onChange={(e) => setConnectionString(e.target.value)}
+            />
+            <Button onClick={testConnection} variant="secondary">Test Connection</Button>
+          </div>
+        </div>
+        
+        <div className={!isConnected ? "opacity-50 pointer-events-none" : ""}>
+          <Label>Service Details</Label>
+          <div className="border rounded-md p-4 mt-1.5">
+            <details>
+              <summary className="font-medium cursor-pointer">{service.service_name} Configuration</summary>
+              <div className="pt-2 space-y-3">
+                <div>
+                  <Label htmlFor="product-table">Select Product Table</Label>
+                  <Select 
+                    disabled={!isConnected}
+                    onValueChange={setSelectedTable}
+                    value={selectedTable}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select a table" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tables.map((table) => (
+                        <SelectItem key={table} value={table}>{table}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Field Mapping</Label>
+                  <div className="grid grid-cols-2 gap-3 mt-1.5">
+                    <div>
+                      <Label htmlFor="categories">Categories</Label>
+                      <Select disabled={!isConnected || !selectedTable}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {columns.map((column) => (
+                            <SelectItem key={column} value={column}>{column}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Select disabled={!isConnected || !selectedTable}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {columns.map((column) => (
+                            <SelectItem key={column} value={column}>{column}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="itemId">Item ID</Label>
+                      <Select disabled={!isConnected || !selectedTable}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {columns.map((column) => (
+                            <SelectItem key={column} value={column}>{column}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="itemName">Item Name</Label>
+                      <Select disabled={!isConnected || !selectedTable}>
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {columns.map((column) => (
+                            <SelectItem key={column} value={column}>{column}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -105,141 +241,50 @@ export function ServiceConfigurationWizard() {
         
         {step === 1 && (
           <div>
-            <Tabs defaultValue="item-locator">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="item-locator">Item Locator</TabsTrigger>
-                <TabsTrigger value="easy-checkout">Easy Checkout</TabsTrigger>
-              </TabsList>
-              <TabsContent value="item-locator" className="pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="connectionString">Connection String</Label>
-                    <div className="flex space-x-2 mt-1.5">
-                      <Input 
-                        id="connectionString"
-                        placeholder="Enter connection string..."
-                        value={connectionString}
-                        onChange={(e) => setConnectionString(e.target.value)}
-                      />
-                      <Button onClick={testConnection} variant="secondary">Test Connection</Button>
+            {/* Service Selection Grid */}
+            <div className="mb-6">
+              <Label className="text-base font-medium">Select a Service</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-3">
+                {services.map((service) => (
+                  <div
+                    key={service.service_id}
+                    onClick={() => setSelectedService(service.service_id)}
+                    className={`flex flex-col items-center p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md ${
+                      selectedService === service.service_id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="w-12 h-12 mb-2 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                      {service.image_url ? (
+                        <img
+                          src={service.image_url}
+                          alt={service.service_name}
+                          className="w-full h-full object-cover"                         
+                        />
+                      ) : null}
+                      <div
+                        className={`w-full h-full flex items-center justify-center text-sm font-semibold text-gray-600 ${
+                          service.image_url ? 'hidden' : 'flex'
+                        }`}
+                      >
+                        {service.service_name.charAt(0).toUpperCase()}
+                      </div>
                     </div>
+                    <span className="text-xs text-center font-medium leading-tight">
+                      {service.service_name}
+                    </span>
                   </div>
-                  
-                  <div className={!isConnected ? "opacity-50 pointer-events-none" : ""}>
-                    <Label>Service Details</Label>
-                    <div className="border rounded-md p-4 mt-1.5">
-                      <details>
-                        <summary className="font-medium cursor-pointer">Item Locator Configuration</summary>
-                        <div className="pt-2 space-y-3">
-                          <div>
-                            <Label htmlFor="product-table">Select Product Table</Label>
-                            <Select 
-                              disabled={!isConnected}
-                              onValueChange={setSelectedTable}
-                              value={selectedTable}
-                            >
-                              <SelectTrigger className="mt-1.5">
-                                <SelectValue placeholder="Select a table" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {tables.map((table) => (
-                                  <SelectItem key={table} value={table}>{table}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          
-                          <div>
-                            <Label>Field Mapping</Label>
-                            <div className="grid grid-cols-2 gap-3 mt-1.5">
-                              <div>
-                                <Label htmlFor="categories">Categories</Label>
-                                <Select disabled={!isConnected || !selectedTable}>
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue placeholder="Select field" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {columns.map((column) => (
-                                      <SelectItem key={column} value={column}>{column}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label htmlFor="description">Description</Label>
-                                <Select disabled={!isConnected || !selectedTable}>
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue placeholder="Select field" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {columns.map((column) => (
-                                      <SelectItem key={column} value={column}>{column}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label htmlFor="itemId">Item ID</Label>
-                                <Select disabled={!isConnected || !selectedTable}>
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue placeholder="Select field" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {columns.map((column) => (
-                                      <SelectItem key={column} value={column}>{column}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div>
-                                <Label htmlFor="itemName">Item Name</Label>
-                                <Select disabled={!isConnected || !selectedTable}>
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue placeholder="Select field" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {columns.map((column) => (
-                                      <SelectItem key={column} value={column}>{column}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </details>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="easy-checkout" className="pt-4">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="connectionStringEC">Connection String</Label>
-                    <div className="flex space-x-2 mt-1.5">
-                      <Input 
-                        id="connectionStringEC"
-                        placeholder="Enter connection string..."
-                      />
-                      <Button variant="secondary">Test Connection</Button>
-                    </div>
-                  </div>
-                  
-                  <div className="opacity-50 pointer-events-none">
-                    <Label>Service Details</Label>
-                    <div className="border rounded-md p-4 mt-1.5">
-                      <details>
-                        <summary className="font-medium cursor-pointer">Easy Checkout Configuration</summary>
-                        <div className="pt-2 space-y-3">
-                          <p className="text-sm text-muted-foreground">Test the connection first to enable configuration options</p>
-                        </div>
-                      </details>
-                    </div>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+                ))}
+              </div>
+            </div>
+
+            {/* Configuration Section */}
+            {selectedService && (
+              <div className="border-t pt-6">
+                {renderServiceConfiguration()}
+              </div>
+            )}
           </div>
         )}
         
@@ -247,7 +292,7 @@ export function ServiceConfigurationWizard() {
           <div>
             <h3 className="text-lg font-medium mb-4">Field Mapping</h3>
             <div className="border rounded-md p-4 mb-4">
-              <h4 className="font-medium mb-2">Item Locator</h4>
+              <h4 className="font-medium mb-2">{getSelectedServiceName()}</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm text-muted-foreground">Product Table</Label>
@@ -286,7 +331,7 @@ export function ServiceConfigurationWizard() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-sm text-muted-foreground">Service</Label>
-                  <p className="font-medium">Item Locator</p>
+                  <p className="font-medium">{getSelectedServiceName()}</p>
                 </div>
                 <div>
                   <Label className="text-sm text-muted-foreground">Database Connection</Label>

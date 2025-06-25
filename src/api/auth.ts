@@ -1,12 +1,11 @@
+import { BASE_AUTH_URL } from "@/config/api-config"
 
-// BASE CLOUD URL
-const BASE_AUTH_URL = import.meta.env.VITE_BASE_CLOUD_URL + "/auth"
 
 // Function to genberate QR Code
 export const fetchQRSessionId = async () => {
     
     try {
-        const response = await fetch(BASE_AUTH_URL+"/generate-qr-session",{
+        const response = await fetch(`${BASE_AUTH_URL}/generate-qr-session`, {
             method: 'POST',
             body: JSON.stringify({})
         })

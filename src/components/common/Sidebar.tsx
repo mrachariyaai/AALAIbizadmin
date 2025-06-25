@@ -67,7 +67,7 @@ export function Sidebar({ className }: SidebarProps) {
       <div className="flex-1 overflow-auto py-2">
         <nav className="grid gap-1 px-2">
           <NavItem to="/dashboard" icon={<LayoutDashboard className="h-4 w-4" />} label="Dashboard" collapsed={collapsed} />
-          <NavItem to="/stakeholders" icon={<Users className="h-4 w-4" />} label="Stakeholders" collapsed={collapsed} />
+          {/* <NavItem to="/stakeholders" icon={<Users className="h-4 w-4" />} label="Stakeholders" collapsed={collapsed} /> */}
           <NavItem to="/employees" icon={<User className="h-4 w-4" />} label="Employees" collapsed={collapsed} />
           <NavItem to="/services" icon={<Database className="h-4 w-4" />} label="Services" collapsed={collapsed} />
           <NavItem to="/clients" icon={<Building className="h-4 w-4" />} label="Clients" collapsed={collapsed} />
