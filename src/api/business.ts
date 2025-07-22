@@ -1,4 +1,5 @@
 import { BASE_URL, getHeaders } from "@/config/api-config";
+import { Service } from "./types";
 
 // API to load domains
 export const loadDomains = async () => {
@@ -128,5 +129,28 @@ export const listServices = async (businessId: string) => {
     } catch (error) {
         console.error("Error fetching services:", error);
         throw error; // Re-throw to handle it in the calling function
+    }
+}
+
+// Add a new service for a business
+export const addService = async (businessId: string, service: Service) => {
+    const headers = await getHeaders();
+    console.log("Business ID: ", businessId);
+    try {
+        const response = await fetch(`${BASE_URL}/businesses/${businessId}/services`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(service),
+        });
+
+        console.log("Response from createService: ", response);
+
+        if (!response.ok) {
+            throw new Error(`Error creating service: ${response.statusText}`);
+        }
+
+        return true
+    } catch (error) {
+        console.error("Error creating service:", error);
     }
 }

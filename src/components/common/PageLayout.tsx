@@ -14,7 +14,6 @@ interface PageLayoutProps {
 
 export function PageLayout({ children, requiresAuth = true, title }: PageLayoutProps) {
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
-  const { refreshBusinesses } = useBusinessContext();
   const queryClient = useQueryClient();
 
   // Use React Query mutation for creating business
@@ -60,6 +59,9 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
             >
               <span className="text-lg">+</span> 
               {createBusinessMutation.isPending ? 'Adding...' : 'Add Business'}
+              {createBusinessMutation.isPending && (
+                <span className="loader"></span>
+              )}
             </button>
           </div>
         )}
