@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,10 +48,11 @@ export function LoginForm() {
   const [qrCode, setQrCode] = useState("");
   const [qrSessionId, setQrSessionId] = useState("");
   const [isQrLoading, setIsQrLoading] = useState(false);
-  const [qrPollingInterval, setQrPollingInterval] = useState<NodeJS.Timeout | null>(null);
-  const [qrExpiryTimeout, setQrExpiryTimeout] = useState<NodeJS.Timeout | null>(null); // New state for timeout
+
+  const qrPollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [qrExpiryTimeout, setQrExpiryTimeout] = useState<NodeJS.Timeout | null>(null);
   const [qrExpired, setQrExpired] = useState(false);
-  
+
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -121,6 +122,7 @@ export function LoginForm() {
 
   // Start polling to check if QR code has been scanned
   const startQRPolling = async (sessionId: string) => {
+    
     const interval = setInterval(async () => {
       try {
         // Check the backend for scan status
@@ -132,14 +134,14 @@ export function LoginForm() {
           // Stop polling and clear expiry timeout
           stopQRPolling();
           clearQRExpiryTimeout();
-          setQrPollingInterval(null);
+          setQrExpired(false);
 
           // Complete the QR code login process
           const res = await completeQRLogin(sessionId);
           if (res.status === 'success') {
             toast({
               title: "Login Successful",
-              description: "You have been logged in via QR code",
+              description: "You have logged in via QR code",
             });
 
             // manually notify about signin
@@ -160,15 +162,17 @@ export function LoginForm() {
         console.error("QR polling error:", error);
       }
     }, 2000); // Poll every 2 seconds
-    
-    setQrPollingInterval(interval);
+
+    // Store the interval ID
+    qrPollingIntervalRef.current = interval;
+
   };
 
   // Stop QR code polling
   const stopQRPolling = () => {
-    if (qrPollingInterval) {
-      clearInterval(qrPollingInterval);
-      setQrPollingInterval(null);
+    if (qrPollingIntervalRef.current) {
+      clearInterval(qrPollingIntervalRef.current);
+      qrPollingIntervalRef.current = null;
     }
   };
 
