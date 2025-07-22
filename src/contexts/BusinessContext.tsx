@@ -48,8 +48,8 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   } = useQuery({
     queryKey: ['businesses'],
     queryFn: listBusinesses,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (updated from cacheTime)
+    staleTime: 60 * 60 * 1000, // 1 hour
+    gcTime: 60 * 60 * 1000, // 1 hour (updated from cacheTime)
   });
 
   const refreshBusinesses = React.useCallback(async () => {
