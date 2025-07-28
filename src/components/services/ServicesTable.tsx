@@ -38,7 +38,7 @@ export function ServicesTable() {
         // Fallback to static data if API fails
         setServices([]);
       }); 
-  }, [])
+  }, [businessId])
 
   const getStatusBadge = (status: Service["status"]) => {
     switch(status) {

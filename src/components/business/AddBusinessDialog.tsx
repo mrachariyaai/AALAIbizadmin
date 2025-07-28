@@ -28,6 +28,7 @@ interface Domain {
 }
 
 export function AddBusinessDialog({ open, onOpenChange, onSubmit }: AddBusinessDialogProps) {
+  
   const [businessName, setBusinessName] = useState("");
   const [domainId, setDomainId] = useState("");
   const [domainName, setDomainName] = useState("");

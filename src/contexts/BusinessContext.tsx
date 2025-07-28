@@ -1,6 +1,7 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { listBusinesses } from '@/api/business';
+import { useAuth } from './AuthProvider';
 
 interface Business {
   business_id: string;
@@ -36,7 +37,8 @@ interface BusinessProviderProps {
 }
 
 export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) => {
-  const queryClient = useQueryClient();
+  
+  const { user, authLoading } = useAuth();
   const [selectedBusiness, setSelectedBusiness] = React.useState<Business | null>(null);
 
   // Use React Query for business data
@@ -48,6 +50,7 @@ export const BusinessProvider: React.FC<BusinessProviderProps> = ({ children }) 
   } = useQuery({
     queryKey: ['businesses'],
     queryFn: listBusinesses,
+    enabled: !authLoading && !!user, // Only fetch if user is authenticated
     staleTime: 60 * 60 * 1000, // 1 hour
     gcTime: 60 * 60 * 1000, // 1 hour (updated from cacheTime)
   });

@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 import { Navigate, useLocation } from "react-router-dom";
 
 const RequireAuth = ({ children }: { children: JSX.Element }) => {
+  
   const { user, authLoading } = useAuth();
   const location = useLocation();
 
