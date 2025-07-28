@@ -14,6 +14,7 @@ interface PageLayoutProps {
 
 export function PageLayout({ children, requiresAuth = true, title }: PageLayoutProps) {
   const [isAddBusinessOpen, setIsAddBusinessOpen] = useState(false);
+  const { refreshBusinesses } = useBusinessContext();
   const queryClient = useQueryClient();
 
   // Use React Query mutation for creating business
@@ -23,6 +24,7 @@ export function PageLayout({ children, requiresAuth = true, title }: PageLayoutP
       // Invalidate and refetch businesses
       queryClient.invalidateQueries({ queryKey: ['businesses'] });
       setIsAddBusinessOpen(false);
+      refreshBusinesses();
     },
     onError: (error) => {
       console.error("Error adding business:", error);
